@@ -13,7 +13,7 @@ Persistent knowledge management for Claude Code projects with work-in-progress t
 
 ```bash
 # Add marketplace
-/plugin marketplace add yourusername/claude-knowledge-plugin
+/plugin marketplace add okkazoo/claude-knowledge-plugin
 
 # Install plugin
 /plugin install knowledge-base@claude-knowledge-plugin
