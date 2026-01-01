@@ -1,7 +1,5 @@
 {
   "name": "ok",
   "version": "1.0.0",
-  "description": "Persistent knowledge management with work-in-progress tracking, checkpoints, and auto-indexing for Claude Code projects",
-  "authors": ["OKKazoo"],
-  "homepage": "https://github.com/okkazoo/claude-knowledge-plugin"
+  "description": "Persistent knowledge management with work-in-progress tracking, checkpoints, and auto-indexing for Claude Code projects"
 }
