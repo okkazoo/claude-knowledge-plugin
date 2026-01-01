@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "ok-know",
-      "source": "./",
+      "source": "./ok-know/",
       "description": "Persistent knowledge management with work-in-progress tracking, save points, and auto-indexing",
       "version": "1.1.0"
     }
