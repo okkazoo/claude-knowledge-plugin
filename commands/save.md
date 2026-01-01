@@ -1,11 +1,11 @@
 ---
-name: checkpoint
+name: save
 description: Save working state, auto-bump VERSION based on consumed knowledge patterns, and update CHANGELOG.
 allowed-tools: Read, Write, Bash, Grep, Glob, AskUserQuestion
 argument-hint: [description]
 ---
 
-# Save Checkpoint
+# Save
 
 ## When to Use
 
@@ -45,29 +45,31 @@ git diff --cached --name-only
 Search `.claude/knowledge/journey/` and `.claude/knowledge/facts/` for mentions of the changed files.
 
 #### Step 2c: Check what's already been used
-Read `.claude/knowledge/commit-history.md` to get list of already-consumed knowledge files.
+Parse git history for previously consumed knowledge:
+```bash
+git log --all --grep="Knowledge-used:" --format="%b" | grep "Knowledge-used:" | sed 's/Knowledge-used: //'
+```
+This extracts all knowledge files that have been embedded in previous commits.
 
-#### Step 2d: Filter to unused knowledge (with existence check)
-1. Parse knowledge files from commit-history.md
-2. **Verify each file still exists** - if a file was deleted (e.g., via `.knowledge -audit`), ignore that entry
-3. Only use knowledge files NOT in the valid (existing) consumed list
-
-This ensures deleted knowledge files are treated as "not consumed" since they no longer exist.
+#### Step 2d: Filter to unused knowledge
+1. Get list of knowledge files from git history (Step 2c)
+2. **Verify each file still exists** - if deleted, it can be reused
+3. Only use knowledge files NOT in the consumed list
 
 #### Step 2e: Generate message
 Read the unused knowledge files and summarize what was accomplished:
 - Focus on the "what" and "why" from journey progress
 - Keep it concise (1-2 sentences)
-- Format: `checkpoint: [summary from knowledge]`
+- Format: `[summary from knowledge]`
 
-If no unused knowledge found, fall back to: `checkpoint: work in progress on [changed-files]`
+If no unused knowledge found, fall back to: `work in progress on [changed-files]`
 
-### 3. Create Checkpoint File
+### 3. Create Save Point File
 
-Save to: `.claude/knowledge/checkpoints/YYYY-MM-DD-HH-MM-[description-slug].md`
+Save to: `.claude/knowledge/savepoints/YYYY-MM-DD-HH-MM-[description-slug].md`
 
 ```markdown
-# Checkpoint: [Description]
+# Save: [Description]
 
 ## Date: YYYY-MM-DD HH:MM
 ## Git Branch: [branch name]
@@ -84,14 +86,14 @@ Save to: `.claude/knowledge/checkpoints/YYYY-MM-DD-HH-MM-[description-slug].md`
 - New: [new version]
 - Type: [patch/minor/major] ([X] solutions, [Y] gotchas)
 
-## State at Checkpoint
+## State at Save
 
 ### Modified Files
 - [file1.py]
 - [file2.jsx]
 
 ### Recent Changes
-[Summary of what was done before checkpoint]
+[Summary of what was done before save]
 
 ### Git Diff Summary
 ```
@@ -100,7 +102,7 @@ Save to: `.claude/knowledge/checkpoints/YYYY-MM-DD-HH-MM-[description-slug].md`
 
 ## To Restore
 
-If things break after this checkpoint:
+If things break after this save:
 
 1. Review what changed:
    ```bash
@@ -117,7 +119,7 @@ If things break after this checkpoint:
 
 ### 4. Auto-Bump VERSION
 
-Every checkpoint automatically bumps the VERSION file based on consumed knowledge patterns.
+Every save automatically bumps the VERSION file based on consumed knowledge patterns.
 
 #### Step 4a: Read current version
 ```bash
@@ -126,7 +128,7 @@ cat VERSION 2>/dev/null || echo "0.0.0"
 If no VERSION file exists, start at 0.1.0.
 
 #### Step 4b: Scan patterns from consumed knowledge
-Read `.claude/knowledge/knowledge.json` and find patterns from the knowledge files used in this checkpoint.
+Read `.claude/knowledge/knowledge.json` and find patterns from the knowledge files used in this save.
 
 #### Step 4c: Infer bump type from pattern types
 
@@ -182,9 +184,9 @@ Auto-generate categories from consumed patterns:
 - [Pattern descriptions from tried-failed/gotcha patterns]
 ```
 
-#### Step 4g: Update checkpoint file with version info
+#### Step 4g: Update save point file with version info
 
-Add to checkpoint file:
+Add to save point file:
 ```markdown
 ## Version Bump
 - Previous: 0.1.0
@@ -192,59 +194,50 @@ Add to checkpoint file:
 - Type: minor (3 solutions consumed)
 ```
 
-### 5. Optionally Stage/Commit
+### 5. Stage and Commit
 
 Use AskUserQuestion:
 ```json
 {
   "questions": [{
-    "question": "Commit current changes? This creates a git checkpoint you can revert to.",
+    "question": "Commit current changes?",
     "header": "Commit",
     "multiSelect": false,
     "options": [
       {"label": "Yes", "description": "Stage and commit all changes"},
-      {"label": "No", "description": "Skip commit, just save checkpoint file"}
+      {"label": "No", "description": "Skip commit, just save the file"}
     ]
   }]
 }
 ```
 
-If Yes:
+If Yes, commit with knowledge embedded in message:
 ```bash
 git add -A
-git commit -m "checkpoint: [description]"
+git commit -m "[description]
+
+[optional longer description]
+
+Knowledge-used: [comma-separated list of knowledge file paths]"
 ```
 
-### 6. Record Knowledge Usage
+**Example commit message:**
+```
+Implemented JWT auth with refresh tokens
 
-After successful commit, append to `.claude/knowledge/commit-history.md`:
+Added token refresh logic and fixed session expiry bug.
 
-```markdown
-## [short-hash] (YYYY-MM-DD HH:MM)
-**Message:** [commit message]
-**Version:** 0.1.0 -> 0.2.0 (minor)
-**Files changed:** [list]
-**Knowledge used:**
-- [knowledge-file-1.md]
-- [knowledge-file-2.md]
+Knowledge-used: journey/2026-01-02-auth-flow.md, facts/jwt-refresh-gotcha.md
 ```
 
-Create the file if it doesn't exist with header:
-```markdown
-# Commit History - Knowledge Usage
+The `Knowledge-used:` line is parsed by future saves to avoid reusing the same knowledge.
 
-Tracks which knowledge files have been used to generate commit messages.
-This prevents reusing the same knowledge for multiple commits.
-
----
-```
-
-### 7. Confirm
+### 6. Confirm
 
 ```
-Checkpoint saved: [description]
+Saved: [description]
 
-File: .claude/knowledge/checkpoints/YYYY-MM-DD-HH-MM-description.md
+File: .claude/knowledge/savepoints/YYYY-MM-DD-HH-MM-description.md
 Version: 0.1.0 -> 0.2.0 (minor)
 Git: [committed/not committed]
 Commit: [hash if committed]
@@ -252,31 +245,30 @@ Knowledge used: [count] files
 Patterns: [X solutions, Y gotchas]
 
 Safe to proceed with risky changes.
-If things break, we can restore from this point.
 ```
 
 ## Quick Usage
 
 ```
-checkpoint                        # Auto-generates message from knowledge
-checkpoint before auth refactor   # Uses provided description
+save                        # Auto-generates message from knowledge
+save before auth refactor   # Uses provided description
 ```
 
-## Listing Checkpoints
+## Listing Save Points
 
 ```bash
-ls -lt .claude/knowledge/checkpoints/*.md | head -10
+ls -lt .claude/knowledge/savepoints/*.md | head -10
 ```
 
 ## Restoring
 
 Use git to restore:
 ```bash
-# See what changed since checkpoint
-git diff [checkpoint-commit]..HEAD
+# See what changed since save
+git diff [save-commit]..HEAD
 
 # Hard restore
-git checkout [checkpoint-commit] -- .
+git checkout [save-commit] -- .
 ```
 
 Or use Claude's `/rewind` command to go back in conversation history.

@@ -14,7 +14,7 @@ Sets up the `.claude/knowledge/` directory structure and CLAUDE.md for persisten
 ### 1. Create Directory Structure
 
 ```bash
-mkdir -p .claude/knowledge/journey .claude/knowledge/facts .claude/knowledge/patterns .claude/knowledge/checkpoints .claude/knowledge/versions
+mkdir -p .claude/knowledge/journey .claude/knowledge/facts .claude/knowledge/patterns .claude/knowledge/savepoints .claude/knowledge/versions
 ```
 
 ### 2. Create Index Files (if missing)
@@ -47,9 +47,9 @@ If `.claude/knowledge/coderef.json` does NOT exist, create it:
 
 ### 3. Install Helper Script
 
-**Step 3a:** Find the ok plugin in the registry:
+**Step 3a:** Find the ok-know plugin in the registry:
 ```bash
-cat ~/.claude/plugins/installed_plugins.json | grep -A3 '"ok@'
+cat ~/.claude/plugins/installed_plugins.json | grep -A3 '"ok-know@'
 ```
 
 This will show the `installPath`. Note the path shown.
@@ -134,11 +134,11 @@ Replace `<PLUGIN_PATH>` with the actual path from step 3a (converted if on Windo
 
 | Command | Purpose |
 |---------|---------|
-| `/ok:wip` | Save work-in-progress with auto-extracted patterns |
-| `/ok:wip -f <text>` | Save a fact/gotcha directly |
-| `/ok:checkpoint [desc]` | Save state, auto-bump VERSION |
-| `/ok:knowledge` | Show knowledge base status |
-| `/ok:version -patch\|-minor\|-major` | Bump version and changelog |
+| `/ok-know:wip` | Save work-in-progress with auto-extracted patterns |
+| `/ok-know:wip -f <text>` | Save a fact/gotcha directly |
+| `/ok-know:save [desc]` | Save state, auto-bump VERSION |
+| `/ok-know:knowledge` | Show knowledge base status |
+| `/ok-know:version -patch\|-minor\|-major` | Bump version and changelog |
 
 ## Knowledge Base
 
@@ -163,7 +163,7 @@ When you Grep/Glob, the hook automatically shows:
 1. **Before trying anything** - Search for related patterns
 2. **Check tried-failed** - Don't repeat documented failures
 3. **Use solutions** - Apply what already worked
-4. **After solving** - `/ok:wip` captures patterns automatically
+4. **After solving** - `/ok-know:wip` captures patterns automatically
 
 ## Project-Specific Notes
 
@@ -179,7 +179,7 @@ When you Grep/Glob, the hook automatically shows:
 [Document common pitfalls]
 
 ---
-*Initialized with ok plugin*
+*Initialized with ok-know plugin*
 ```
 
 **If CLAUDE.md already exists**, check if it has a Knowledge Base section:
@@ -194,18 +194,18 @@ If no Knowledge Base section, append this to the existing CLAUDE.md:
 
 ---
 
-## Knowledge Base (ok plugin)
+## Knowledge Base (ok-know plugin)
 
-Project uses the `ok` knowledge management plugin.
+Project uses the `ok-know` knowledge management plugin.
 
 ### Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/ok:wip` | Save work-in-progress with auto-extracted patterns |
-| `/ok:wip -f <text>` | Save a fact/gotcha directly |
-| `/ok:checkpoint [desc]` | Save state, auto-bump VERSION |
-| `/ok:knowledge` | Show knowledge base status |
+| `/ok-know:wip` | Save work-in-progress with auto-extracted patterns |
+| `/ok-know:wip -f <text>` | Save a fact/gotcha directly |
+| `/ok-know:save [desc]` | Save state, auto-bump VERSION |
+| `/ok-know:knowledge` | Show knowledge base status |
 
 ### Hooks
 
@@ -218,7 +218,7 @@ Project uses the `ok` knowledge management plugin.
 1. Before trying anything - search for related patterns
 2. Check tried-failed patterns - don't repeat failures
 3. Use documented solutions
-4. After solving - `/ok:wip` captures patterns
+4. After solving - `/ok-know:wip` captures patterns
 ```
 
 ### 5. Create VERSION file if missing
@@ -237,7 +237,7 @@ Structure created:
   ├── journey/      (work-in-progress entries)
   ├── facts/        (quick facts, gotchas)
   ├── patterns/     (extracted solutions)
-  ├── checkpoints/  (state snapshots)
+  ├── savepoints/   (state snapshots)
   └── versions/     (version history)
 
 CLAUDE.md: [created/augmented/unchanged]
@@ -245,6 +245,6 @@ VERSION: [created at 0.1.0 / already exists at X.Y.Z]
 
 Next steps:
   1. Review and customize CLAUDE.md for your project
-  2. Use /ok:wip to save progress as you work
-  3. Use /ok:checkpoint before risky changes
+  2. Use /ok-know:wip to save progress as you work
+  3. Use /ok-know:save before risky changes
 ```

@@ -1,11 +1,11 @@
 # Knowledge Base Plugin for Claude Code
 
-Persistent knowledge management for Claude Code projects with work-in-progress tracking, checkpoints, and auto-indexing.
+Persistent knowledge management for Claude Code projects with work-in-progress tracking, save points, and auto-indexing.
 
 ## Features
 
-- **Work-in-Progress Tracking**: Save progress between sessions with `/ok:wip`
-- **Checkpoints**: Create restore points before risky changes
+- **Work-in-Progress Tracking**: Save progress between sessions with `/ok-know:wip`
+- **Save Points**: Create restore points before risky changes
 - **Auto-Indexing**: Code symbols and knowledge automatically indexed
 - **Pre-Search Context**: Knowledge surfaced before searches via hooks
 - **Version Management**: Automatic version bumping and changelog
@@ -19,7 +19,7 @@ Persistent knowledge management for Claude Code projects with work-in-progress t
 /plugins marketplace add okkazoo/claude-knowledge-plugin
 
 # Install the plugin
-/plugins install ok
+/plugins install ok-know
 ```
 
 ### From Local Source
@@ -34,20 +34,20 @@ claude --plugin-dir /path/to/claude-knowledge-plugin
 /plugins install /path/to/claude-knowledge-plugin
 ```
 
-**Important:** The plugin must be installed before running `/ok:init`. The init command reads from Claude's plugin registry (`~/.claude/plugins/installed_plugins.json`) to locate the helper scripts.
+**Important:** The plugin must be installed before running `/ok-know:init`. The init command reads from Claude's plugin registry (`~/.claude/plugins/installed_plugins.json`) to locate the helper scripts.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `/ok:init` | Initialize knowledge base in current project |
-| `/ok:wip` | Save work-in-progress (auto-detects topics) |
-| `/ok:wip -f <text>` | Save a fact directly |
-| `/ok:checkpoint [desc]` | Create restore point with auto-versioning |
-| `/ok:knowledge` | Show knowledge base status |
-| `/ok:version` | Show current version |
-| `/ok:version -patch\|-minor\|-major` | Bump version and update changelog |
-| `/ok:setup` | Bootstrap CLAUDE.md for new projects |
+| `/ok-know:init` | Initialize knowledge base in current project |
+| `/ok-know:wip` | Save work-in-progress (auto-detects topics) |
+| `/ok-know:wip -f <text>` | Save a fact directly |
+| `/ok-know:save [desc]` | Create restore point with auto-versioning |
+| `/ok-know:knowledge` | Show knowledge base status |
+| `/ok-know:version` | Show current version |
+| `/ok-know:version -patch\|-minor\|-major` | Bump version and update changelog |
+| `/ok-know:setup` | Bootstrap CLAUDE.md for new projects |
 
 ## Hooks
 
@@ -83,14 +83,14 @@ Task(subagent_type="Plan", prompt="Plan implementation for user auth")
 
 ## Directory Structure
 
-After running `/ok:init`:
+After running `/ok-know:init`:
 
 ```
 .claude/knowledge/
 ├── journey/      # Work-in-progress entries
 ├── facts/        # Quick facts, gotchas
 ├── patterns/     # Extracted solutions
-├── checkpoints/  # State snapshots
+├── savepoints/   # State snapshots
 ├── versions/     # CHANGELOG.md
 ├── coderef.json  # Code symbol index
 └── knowledge.json # Knowledge index
@@ -100,16 +100,16 @@ After running `/ok:init`:
 
 1. **Install the plugin** (see Installation above)
 2. **Navigate to your project** directory in Claude Code
-3. **Run `/ok:init`** to set up the knowledge base structure
-4. **Use `/ok:wip`** to save progress as you work
-5. **Use `/ok:checkpoint`** before risky changes
+3. **Run `/ok-know:init`** to set up the knowledge base structure
+4. **Use `/ok-know:wip`** to save progress as you work
+5. **Use `/ok-know:save`** before risky changes
 
 ### Troubleshooting
 
-**"Could not find ok plugin"** - The plugin isn't installed. Run `/plugins install ok` first.
+**"Could not find ok-know plugin"** - The plugin isn't installed. Run `/plugins install ok-know` first.
 
-**Helper script not copied** - If `/ok:init` completes but the helper script is missing, check that:
-- The plugin is in the registry: `cat ~/.claude/plugins/installed_plugins.json | grep ok`
+**Helper script not copied** - If `/ok-know:init` completes but the helper script is missing, check that:
+- The plugin is in the registry: `cat ~/.claude/plugins/installed_plugins.json | grep ok-know`
 - Python 3 is available (used to parse the registry)
 
 ## Authors

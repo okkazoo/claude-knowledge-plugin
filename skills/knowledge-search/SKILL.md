@@ -42,7 +42,7 @@ This is not optional - it prevents:
 │           └── *.md      # Progress entries
 ├── patterns/         # How-to guides
 ├── versions/         # CHANGELOG.md
-└── checkpoints/      # Saved states
+└── savepoints/       # Saved states
 ```
 
 ## How to Search

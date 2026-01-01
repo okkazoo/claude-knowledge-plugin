@@ -96,14 +96,14 @@ def get_knowledge_stats():
         facts_dir = knowledge_dir / "facts"
         facts_count = len([f for f in facts_dir.glob("*.md") if not f.name.startswith('.')]) if facts_dir.exists() else 0
 
-        checkpoints_dir = knowledge_dir / "checkpoints"
-        checkpoint_count = len([f for f in checkpoints_dir.glob("*.md") if not f.name.startswith('.')]) if checkpoints_dir.exists() else 0
+        savepoints_dir = knowledge_dir / "savepoints"
+        savepoint_count = len([f for f in savepoints_dir.glob("*.md") if not f.name.startswith('.')]) if savepoints_dir.exists() else 0
 
         return {
             "completed": completed_count,
             "active": active_count,
             "facts": facts_count,
-            "checkpoints": checkpoint_count,
+            "savepoints": savepoint_count,
         }
     except Exception:
         return None
@@ -131,7 +131,7 @@ def main():
         stats = get_knowledge_stats()
         if stats:
             context_parts.append(f"""## Knowledge Base
-- Completed: {stats['completed']} | Active: {stats['active']} | Facts: {stats['facts']} | Checkpoints: {stats['checkpoints']}
+- Completed: {stats['completed']} | Active: {stats['active']} | Facts: {stats['facts']} | Savepoints: {stats['savepoints']}
 """)
 
         active_journeys = get_active_journeys()
@@ -139,7 +139,7 @@ def main():
             context_parts.append(f"""## Active Journeys (Work in Progress)
 {chr(10).join(active_journeys)}
 
-*Run `/knowledge-base:wip` to add progress.*
+*Run `/ok-know:wip` to add progress.*
 """)
 
         if context_parts:

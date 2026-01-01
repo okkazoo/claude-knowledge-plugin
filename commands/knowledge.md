@@ -19,7 +19,7 @@ argument-hint: -full | -reset
 
 ```bash
 if [ ! -d ".claude/knowledge" ]; then
-  echo "Knowledge base not initialized. Run /knowledge-base:init first."
+  echo "Knowledge base not initialized. Run /ok-know:init first."
   exit 1
 fi
 ```

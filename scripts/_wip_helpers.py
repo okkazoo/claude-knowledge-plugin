@@ -694,7 +694,7 @@ def create_backup() -> Path:
         Path to backup directory
     """
     timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    backup_dir = Path(f'.claude/knowledge/checkpoints/refactor-backup-{timestamp}')
+    backup_dir = Path(f'.claude/knowledge/savepoints/refactor-backup-{timestamp}')
     journey_dir = Path('.claude/knowledge/journey')
 
     # Create backup
@@ -924,15 +924,15 @@ def get_knowledge_status() -> str:
             except:
                 pass
 
-    # Count checkpoints
-    checkpoints_dir = Path('.claude/knowledge/checkpoints')
-    checkpoint_count = 0
-    checkpoints_detail = []
+    # Count savepoints
+    savepoints_dir = Path('.claude/knowledge/savepoints')
+    savepoint_count = 0
+    savepoints_detail = []
 
-    if checkpoints_dir.exists():
-        checkpoint_dirs = sorted([d for d in checkpoints_dir.iterdir() if d.is_dir()], reverse=True)
-        checkpoint_count = len(checkpoint_dirs)
-        checkpoints_detail = [d.name for d in checkpoint_dirs[:5]]
+    if savepoints_dir.exists():
+        savepoint_dirs = sorted([d for d in savepoints_dir.iterdir() if d.is_dir()], reverse=True)
+        savepoint_count = len(savepoint_dirs)
+        savepoints_detail = [d.name for d in savepoint_dirs[:5]]
 
     # Build output
     lines = []
@@ -946,7 +946,7 @@ def get_knowledge_status() -> str:
     # Stats (no icons)
     lines.append("Stats")
     lines.append(dotted_line)
-    lines.append(f"Journeys: {journey_count}  |  Facts: {facts_count}  |  Checkpoints: {checkpoint_count}")
+    lines.append(f"Journeys: {journey_count}  |  Facts: {facts_count}  |  Savepoints: {savepoint_count}")
     lines.append("")
     lines.append("")
 
@@ -1058,18 +1058,18 @@ def get_knowledge_status() -> str:
     lines.append("")
     lines.append("")
 
-    # Checkpoints (no icons)
-    if checkpoint_count > 0:
-        lines.append("CHECKPOINTS")
+    # Savepoints (no icons)
+    if savepoint_count > 0:
+        lines.append("SAVEPOINTS")
         lines.append(dotted_line)
-        for c in checkpoints_detail:
+        for c in savepoints_detail:
             lines.append(c)
-        if checkpoint_count > 5:
-            lines.append(f"... and {checkpoint_count - 5} more")
+        if savepoint_count > 5:
+            lines.append(f"... and {savepoint_count - 5} more")
         lines.append("")
         lines.append("")
 
-    lines.append("Commands: .wip  .checkpoint  .knowledge")
+    lines.append("Commands: .wip  .save  .knowledge")
 
     return '\n'.join(lines)
 
@@ -1095,7 +1095,7 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
     affected = {
         'journeys': [],
         'facts': [],
-        'checkpoints': [],
+        'savepoints': [],
         'versions': [],
     }
 
@@ -1119,12 +1119,12 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
             if not fact.name.startswith('.'):
                 affected['facts'].append(fact.name)
 
-    # Count checkpoints
-    checkpoints_dir = knowledge_dir / 'checkpoints'
-    if checkpoints_dir.exists():
-        for cp in checkpoints_dir.iterdir():
+    # Count savepoints
+    savepoints_dir = knowledge_dir / 'savepoints'
+    if savepoints_dir.exists():
+        for cp in savepoints_dir.iterdir():
             if cp.is_dir() and not cp.name.startswith('.'):
-                affected['checkpoints'].append(cp.name)
+                affected['savepoints'].append(cp.name)
 
     # Count versions
     versions_dir = knowledge_dir / 'versions'
@@ -1136,9 +1136,9 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
     # Calculate totals
     total_journeys = len(affected['journeys'])
     total_facts = len(affected['facts'])
-    total_checkpoints = len(affected['checkpoints'])
+    total_savepoints = len(affected['savepoints'])
     total_versions = len(affected['versions'])
-    total_items = total_journeys + total_facts + total_checkpoints + total_versions
+    total_items = total_journeys + total_facts + total_savepoints + total_versions
 
     if dry_run:
         # Show what will be affected
@@ -1179,13 +1179,13 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
             lines.append("  _None_")
         lines.append("")
 
-        # Checkpoints
-        lines.append(f"### 📍 Checkpoints ({total_checkpoints})")
-        if affected['checkpoints']:
-            for c in affected['checkpoints'][:5]:
+        # Savepoints
+        lines.append(f"### 📍 Savepoints ({total_savepoints})")
+        if affected['savepoints']:
+            for c in affected['savepoints'][:5]:
                 lines.append(f"  • {c}")
-            if total_checkpoints > 5:
-                lines.append(f"  _... and {total_checkpoints - 5} more_")
+            if total_savepoints > 5:
+                lines.append(f"  _... and {total_savepoints - 5} more_")
         else:
             lines.append("  _None_")
         lines.append("")
@@ -1310,9 +1310,9 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
                     except:
                         pass
 
-        # Reset checkpoints (keep .gitkeep)
-        if checkpoints_dir.exists():
-            for item in checkpoints_dir.iterdir():
+        # Reset savepoints (keep .gitkeep)
+        if savepoints_dir.exists():
+            for item in savepoints_dir.iterdir():
                 if item.is_dir():
                     safe_rmtree(item)
 
@@ -1379,7 +1379,7 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
         lines.append("✓ Reset knowledge.json")
         lines.append("✓ Cleared journeys")
         lines.append("✓ Cleared facts")
-        lines.append("✓ Cleared checkpoints")
+        lines.append("✓ Cleared savepoints")
         lines.append("✓ Cleared versions")
         lines.append("")
         lines.append("─" * 50)
@@ -2407,7 +2407,7 @@ def audit_knowledge() -> str:
             lines.append(f"  ⚠️  Error reading: {e}")
             issues_found += 1
     else:
-        lines.append("  _File not found (will be created on first checkpoint commit)_")
+        lines.append("  _File not found (will be created on first save commit)_")
 
     lines.append("")
     lines.append(dotted_line)
