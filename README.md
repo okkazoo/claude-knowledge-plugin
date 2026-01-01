@@ -16,7 +16,7 @@ Persistent knowledge management for Claude Code projects with work-in-progress t
 
 ```bash
 # Add the marketplace (one-time setup)
-/plugins marketplace add okkazoo/claude-knowledge-plugin
+/plugins marketplace add okkazoo/ok-claude-plugins
 
 # Install the plugin
 /plugins install ok-know
