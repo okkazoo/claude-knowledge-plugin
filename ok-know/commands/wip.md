@@ -75,12 +75,17 @@ wip                  Autonomous mode - analyzes FULL conversation context
    - If "Update existing" → delete the most similar fact file, then continue to step 3
    - If "Cancel" → exit without saving
 
-3. **Create fact file** (use stdin to avoid shell escaping issues):
+3. **Create fact file** (use Python heredoc to avoid shell escaping):
    ```bash
-   echo '{"text": "<text>"}' | python .claude/knowledge/journey/_wip_helpers.py save_fact_stdin
+   python << 'PYEOF'
+   import sys
+   sys.path.insert(0, '.claude/knowledge/journey')
+   from _wip_helpers import save_fact
+   save_fact("""<text>""")
+   PYEOF
    ```
 
-   Note: Escape any quotes in `<text>` for JSON (e.g., `\"` for literal quotes).
+   Note: Use triple quotes for content. Escape `"""` as `\"\"\"` if it appears in text.
 
    This creates: `.claude/knowledge/facts/YYYY-MM-DD-<slug>.md`
 
@@ -262,12 +267,17 @@ For each journey topic selected:
    - path/to/file2.jsx
    ```
 
-4. **Create the entry using the helper** (use stdin to avoid shell escaping issues):
+4. **Create the entry using the helper** (use Python heredoc to avoid shell escaping):
    ```bash
-   echo '{"category": "<category>", "topic": "<topic>", "content": "<content>"}' | python .claude/knowledge/journey/_wip_helpers.py create_entry_stdin
+   python << 'PYEOF'
+   import sys
+   sys.path.insert(0, '.claude/knowledge/journey')
+   from _wip_helpers import create_entry
+   create_entry("<category>", "<topic>", """<content>""")
+   PYEOF
    ```
 
-   Note: Escape any quotes in values for JSON (e.g., `\"` for literal quotes).
+   Note: Use triple quotes for content. Escape `"""` as `\"\"\"` if it appears in content.
 
    Returns JSON with: `success`, `file`, `category`, `topic`, `patterns_indexed`
 
