@@ -2150,6 +2150,26 @@ if __name__ == '__main__':
         result = create_entry(category, topic, content, slug)
         print(json.dumps(result, indent=2))
 
+    elif command == 'create_entry_stdin':
+        # Read JSON from stdin to avoid shell escaping issues with special characters
+        data = json.load(sys.stdin)
+        result = create_entry(
+            data['category'],
+            data['topic'],
+            data['content'],
+            data.get('slug')
+        )
+        print(json.dumps(result, indent=2))
+
+    elif command == 'save_fact_stdin':
+        # Read JSON from stdin to avoid shell escaping issues with special characters
+        data = json.load(sys.stdin)
+        file_path = save_fact(data['text'], data.get('slug'))
+        print(json.dumps({
+            'success': True,
+            'file': str(file_path)
+        }))
+
     else:
         print(f"Unknown command: {command}")
         sys.exit(1)

@@ -75,10 +75,12 @@ wip                  Autonomous mode - analyzes FULL conversation context
    - If "Update existing" → delete the most similar fact file, then continue to step 3
    - If "Cancel" → exit without saving
 
-3. **Create fact file:**
+3. **Create fact file** (use stdin to avoid shell escaping issues):
    ```bash
-   python .claude/knowledge/journey/_wip_helpers.py save_fact "<text>"
+   echo '{"text": "<text>"}' | python .claude/knowledge/journey/_wip_helpers.py save_fact_stdin
    ```
+
+   Note: Escape any quotes in `<text>` for JSON (e.g., `\"` for literal quotes).
 
    This creates: `.claude/knowledge/facts/YYYY-MM-DD-<slug>.md`
 
@@ -260,10 +262,12 @@ For each journey topic selected:
    - path/to/file2.jsx
    ```
 
-4. **Create the entry using the helper** (auto-creates dir, timestamps filename, updates meta, indexes patterns):
+4. **Create the entry using the helper** (use stdin to avoid shell escaping issues):
    ```bash
-   python .claude/knowledge/journey/_wip_helpers.py create_entry "<category>" "<topic>" "<content>"
+   echo '{"category": "<category>", "topic": "<topic>", "content": "<content>"}' | python .claude/knowledge/journey/_wip_helpers.py create_entry_stdin
    ```
+
+   Note: Escape any quotes in values for JSON (e.g., `\"` for literal quotes).
 
    Returns JSON with: `success`, `file`, `category`, `topic`, `patterns_indexed`
 
