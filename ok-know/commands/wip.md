@@ -51,7 +51,7 @@ wip                  Autonomous mode - analyzes FULL conversation context
 
 2. **Duplicate Check** (quick dupe-check before saving):
    ```bash
-   python .claude/knowledge/journey/_wip_helpers.py find_similar_facts "<text>"
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" find_similar_facts "<text>"
    ```
 
    **If similar facts found (count > 0):**
@@ -77,9 +77,9 @@ wip                  Autonomous mode - analyzes FULL conversation context
 
 3. **Create fact file** (use Python heredoc to avoid shell escaping):
    ```bash
-   python << 'PYEOF'
+   python - "${CLAUDE_PLUGIN_ROOT}/scripts" << 'PYEOF'
    import sys
-   sys.path.insert(0, '.claude/knowledge/journey')
+   sys.path.insert(0, sys.argv[1])
    from _wip_helpers import save_fact
    save_fact("""<text>""")
    PYEOF
@@ -207,7 +207,7 @@ For each journey topic selected:
 
 1. **Find existing categories** (to choose appropriate one):
    ```bash
-   python .claude/knowledge/journey/_wip_helpers.py scan_categories
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" scan_categories
    ```
 
 2. **Extract content for THIS topic** from full conversation:
@@ -269,9 +269,9 @@ For each journey topic selected:
 
 4. **Create the entry using the helper** (use Python heredoc to avoid shell escaping):
    ```bash
-   python << 'PYEOF'
+   python - "${CLAUDE_PLUGIN_ROOT}/scripts" << 'PYEOF'
    import sys
-   sys.path.insert(0, '.claude/knowledge/journey')
+   sys.path.insert(0, sys.argv[1])
    from _wip_helpers import create_entry
    create_entry("<category>", "<topic>", """<content>""")
    PYEOF

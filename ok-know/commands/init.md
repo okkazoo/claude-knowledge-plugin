@@ -45,31 +45,7 @@ If `.claude/knowledge/coderef.json` does NOT exist, create it:
 }
 ```
 
-### 3. Install Helper Script
-
-**Step 3a:** Find the ok-know plugin in the registry:
-```bash
-cat ~/.claude/plugins/installed_plugins.json | grep -A3 '"ok-know@'
-```
-
-This will show the `installPath`. Note the path shown.
-
-**Step 3b:** Copy the helper script from that path. The path format depends on platform:
-- **Linux/Mac**: Use the path directly
-- **Windows Git Bash**: Convert `C:\\Users\\...` to `/c/Users/...`
-
-```bash
-cp "<PLUGIN_PATH>/scripts/_wip_helpers.py" .claude/knowledge/journey/
-```
-
-Replace `<PLUGIN_PATH>` with the actual path from step 3a (converted if on Windows).
-
-**Step 3c:** Verify the script was copied:
-```bash
-[ -f ".claude/knowledge/journey/_wip_helpers.py" ] && echo "Helper script installed" || echo "ERROR: Helper script missing"
-```
-
-### 4. Create or Augment CLAUDE.md
+### 3. Create or Augment CLAUDE.md
 
 **Check if CLAUDE.md exists:**
 ```bash
@@ -220,7 +196,7 @@ Project uses the `ok-know` knowledge management plugin.
 4. After solving - `/ok-know:wip` captures patterns
 ```
 
-### 5. Confirm
+### 4. Confirm
 
 ```
 Knowledge base initialized!

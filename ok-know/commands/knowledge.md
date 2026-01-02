@@ -29,7 +29,7 @@ fi
 
 1. First, show what will be affected (dry run):
 ```bash
-python .claude/knowledge/journey/_wip_helpers.py reset_knowledge
+python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" reset_knowledge
 ```
 
 2. Use **AskUserQuestion** tool to ask the user which option they want:
@@ -43,7 +43,7 @@ python .claude/knowledge/journey/_wip_helpers.py reset_knowledge
 
 **Otherwise (no argument):**
 ```bash
-python .claude/knowledge/journey/_wip_helpers.py knowledge_status
+python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_status
 ```
 Display the output directly.
 

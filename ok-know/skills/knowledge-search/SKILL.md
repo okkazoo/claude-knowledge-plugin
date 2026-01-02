@@ -51,7 +51,7 @@ This is not optional - it prevents:
 The PreToolUse hook automatically checks `knowledge.json` before your Grep/Glob searches and displays relevant patterns. You can also manually check:
 
 ```bash
-python .claude/knowledge/journey/_wip_helpers.py search_patterns "your query"
+python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" search_patterns "your query"
 ```
 
 Patterns are indexed by keywords and context:
