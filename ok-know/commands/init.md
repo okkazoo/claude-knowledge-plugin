@@ -136,9 +136,8 @@ Replace `<PLUGIN_PATH>` with the actual path from step 3a (converted if on Windo
 |---------|---------|
 | `/ok-know:wip` | Save work-in-progress with auto-extracted patterns |
 | `/ok-know:wip -f <text>` | Save a fact/gotcha directly |
-| `/ok-know:save [desc]` | Save state, auto-bump VERSION |
+| `/ok-know:save [desc]` | Save state before risky changes |
 | `/ok-know:knowledge` | Show knowledge base status |
-| `/ok-know:version -patch\|-minor\|-major` | Bump version and changelog |
 
 ## Knowledge Base
 
@@ -204,7 +203,7 @@ Project uses the `ok-know` knowledge management plugin.
 |---------|---------|
 | `/ok-know:wip` | Save work-in-progress with auto-extracted patterns |
 | `/ok-know:wip -f <text>` | Save a fact/gotcha directly |
-| `/ok-know:save [desc]` | Save state, auto-bump VERSION |
+| `/ok-know:save [desc]` | Save state before risky changes |
 | `/ok-know:knowledge` | Show knowledge base status |
 
 ### Hooks
@@ -221,13 +220,7 @@ Project uses the `ok-know` knowledge management plugin.
 4. After solving - `/ok-know:wip` captures patterns
 ```
 
-### 5. Create VERSION file if missing
-
-```bash
-[ -f "VERSION" ] || echo "0.1.0" > VERSION
-```
-
-### 6. Confirm
+### 5. Confirm
 
 ```
 Knowledge base initialized!
@@ -241,7 +234,6 @@ Structure created:
   └── versions/     (version history)
 
 CLAUDE.md: [created/augmented/unchanged]
-VERSION: [created at 0.1.0 / already exists at X.Y.Z]
 
 Next steps:
   1. Review and customize CLAUDE.md for your project

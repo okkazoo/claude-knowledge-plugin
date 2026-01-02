@@ -833,10 +833,6 @@ def get_knowledge_status() -> str:
     from pathlib import Path
     import subprocess
 
-    # Gather version
-    version_file = Path('VERSION')
-    version = version_file.read_text().strip() if version_file.exists() else '0.1.0'
-
     # Gather git info
     try:
         result = subprocess.run(['git', 'rev-parse', '--git-dir'],
@@ -940,7 +936,7 @@ def get_knowledge_status() -> str:
 
     lines.append("# Knowledge Base Status")
     lines.append("")
-    lines.append(f"**Version:** {version}  |  **Branch:** {git_info}")
+    lines.append(f"**Branch:** {git_info}")
     lines.append("")
 
     # Stats (no icons)
@@ -1201,13 +1197,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
             lines.append("  _None_")
         lines.append("")
 
-        # VERSION file
-        version_file = Path('VERSION')
-        current_version = version_file.read_text(encoding='utf-8').strip() if version_file.exists() else "0.1.0"
-        lines.append("### 📦 VERSION File")
-        lines.append(f"  • {current_version} → 0.1.0")
-        lines.append("")
-
         # Project files reset
         lines.append("### 📄 Project Files (from templates)")
         templates_dir = Path('.claude/templates')
@@ -1223,7 +1212,7 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
 
         lines.append("─" * 50)
         lines.append("")
-        lines.append(f"**Total items:** {total_items} (+ VERSION + project files)")
+        lines.append(f"**Total items:** {total_items} (+ project files)")
         lines.append("")
         lines.append("─" * 50)
         lines.append("")
@@ -1343,10 +1332,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
         }
         knowledge_json.write_text(json.dumps(knowledge_content, indent=2), encoding='utf-8')
 
-        # Reset VERSION file to initial version
-        version_file = Path('VERSION')
-        version_file.write_text('0.1.0\n', encoding='utf-8')
-
         # Reset project files from templates
         templates_dir = Path('.claude/templates')
 
@@ -1374,7 +1359,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
             shutil.copy2(settings_template, Path('.claude/settings.json'))
             lines.append("✓ Reset settings.json to template")
 
-        lines.append("✓ Reset VERSION to 0.1.0")
         lines.append("✓ Reset coderef.json")
         lines.append("✓ Reset knowledge.json")
         lines.append("✓ Cleared journeys")

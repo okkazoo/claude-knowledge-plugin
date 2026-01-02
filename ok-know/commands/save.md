@@ -1,6 +1,6 @@
 ---
 name: save
-description: Save working state, auto-bump VERSION based on consumed knowledge patterns, and update CHANGELOG.
+description: Save working state with auto-generated commit message from knowledge.
 allowed-tools: Read, Write, Bash, Grep, Glob, AskUserQuestion
 argument-hint: [description]
 ---
@@ -81,11 +81,6 @@ Save to: `.claude/knowledge/savepoints/YYYY-MM-DD-HH-MM-[description-slug].md`
 ## Knowledge Used
 - [list of knowledge files used to generate this message]
 
-## Version Bump
-- Previous: [old version]
-- New: [new version]
-- Type: [patch/minor/major] ([X] solutions, [Y] gotchas)
-
 ## State at Save
 
 ### Modified Files
@@ -117,84 +112,7 @@ If things break after this save:
 3. Or use Claude's /rewind command
 ```
 
-### 4. Auto-Bump VERSION
-
-Every save automatically bumps the VERSION file based on consumed knowledge patterns.
-
-#### Step 4a: Read current version
-```bash
-cat VERSION 2>/dev/null || echo "0.0.0"
-```
-If no VERSION file exists, start at 0.1.0.
-
-#### Step 4b: Scan patterns from consumed knowledge
-Read `.claude/knowledge/knowledge.json` and find patterns from the knowledge files used in this save.
-
-#### Step 4c: Infer bump type from pattern types
-
-| Pattern Type | Version Bump |
-|--------------|--------------|
-| `solution` | minor (new feature) |
-| `best-practice` | minor |
-| `tried-failed` | patch (learned from failure) |
-| `gotcha` | patch (bug/trap found) |
-| Text contains "breaking", "removed", "deprecated" | major |
-
-Priority: major > minor > patch
-
-If no patterns found, default to **patch**.
-
-#### Step 4d: Calculate new version
-- `-patch`: X.Y.Z -> X.Y.(Z+1)
-- `-minor`: X.Y.Z -> X.(Y+1).0
-- `-major`: X.Y.Z -> (X+1).0.0
-
-#### Step 4e: Update VERSION file
-```bash
-echo "0.2.0" > VERSION
-```
-
-#### Step 4f: Update CHANGELOG.md
-
-Ensure `.claude/knowledge/versions/CHANGELOG.md` exists:
-```bash
-mkdir -p .claude/knowledge/versions
-```
-
-If new file, create header:
-```markdown
-# Changelog
-
-All notable changes to this project.
-
-Format based on [Keep a Changelog](https://keepachangelog.com/).
-
-```
-
-Prepend new version entry (newest at top, after header).
-Auto-generate categories from consumed patterns:
-
-```markdown
-## [0.2.0] - YYYY-MM-DD
-
-### Added
-- [Pattern descriptions from solution/best-practice patterns]
-
-### Fixed
-- [Pattern descriptions from tried-failed/gotcha patterns]
-```
-
-#### Step 4g: Update save point file with version info
-
-Add to save point file:
-```markdown
-## Version Bump
-- Previous: 0.1.0
-- New: 0.2.0
-- Type: minor (3 solutions consumed)
-```
-
-### 5. Stage and Commit
+### 4. Stage and Commit
 
 Use AskUserQuestion:
 ```json
@@ -232,17 +150,15 @@ Knowledge-used: journey/2026-01-02-auth-flow.md, facts/jwt-refresh-gotcha.md
 
 The `Knowledge-used:` line is parsed by future saves to avoid reusing the same knowledge.
 
-### 6. Confirm
+### 5. Confirm
 
 ```
 Saved: [description]
 
 File: .claude/knowledge/savepoints/YYYY-MM-DD-HH-MM-description.md
-Version: 0.1.0 -> 0.2.0 (minor)
 Git: [committed/not committed]
 Commit: [hash if committed]
 Knowledge used: [count] files
-Patterns: [X solutions, Y gotchas]
 
 Safe to proceed with risky changes.
 ```
