@@ -920,7 +920,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
         'journeys': [],
         'facts': [],
         'savepoints': [],
-        'versions': [],
     }
 
     # Count journeys
@@ -950,19 +949,11 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
             if cp.is_dir() and not cp.name.startswith('.'):
                 affected['savepoints'].append(cp.name)
 
-    # Count versions
-    versions_dir = knowledge_dir / 'versions'
-    if versions_dir.exists():
-        for ver in versions_dir.glob('*.md'):
-            if ver.name != '.gitkeep':
-                affected['versions'].append(ver.name)
-
     # Calculate totals
     total_journeys = len(affected['journeys'])
     total_facts = len(affected['facts'])
     total_savepoints = len(affected['savepoints'])
-    total_versions = len(affected['versions'])
-    total_items = total_journeys + total_facts + total_savepoints + total_versions
+    total_items = total_journeys + total_facts + total_savepoints
 
     if dry_run:
         # Show what will be affected
@@ -1010,17 +1001,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
                 lines.append(f"  • {c}")
             if total_savepoints > 5:
                 lines.append(f"  _... and {total_savepoints - 5} more_")
-        else:
-            lines.append("  _None_")
-        lines.append("")
-
-        # Versions
-        lines.append(f"### 📋 Versions ({total_versions})")
-        if affected['versions']:
-            for v in affected['versions'][:5]:
-                lines.append(f"  • {v}")
-            if total_versions > 5:
-                lines.append(f"  _... and {total_versions - 5} more_")
         else:
             lines.append("  _None_")
         lines.append("")
@@ -1133,15 +1113,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
                 if item.is_dir():
                     safe_rmtree(item)
 
-        # Reset versions (keep .gitkeep)
-        if versions_dir.exists():
-            for f in versions_dir.glob('*.md'):
-                if f.name != '.gitkeep':
-                    try:
-                        f.unlink()
-                    except:
-                        pass
-
         # Reset coderef.json
         coderef_file = knowledge_dir / 'coderef.json'
         coderef_content = {
@@ -1192,7 +1163,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
         lines.append("✓ Cleared journeys")
         lines.append("✓ Cleared facts")
         lines.append("✓ Cleared savepoints")
-        lines.append("✓ Cleared versions")
         lines.append("")
         lines.append("─" * 50)
         lines.append("")

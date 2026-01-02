@@ -41,7 +41,6 @@ This is not optional - it prevents:
 │           ├── _meta.md  # Keywords, timestamps
 │           └── *.md      # Progress entries
 ├── patterns/         # How-to guides
-├── versions/         # CHANGELOG.md
 └── savepoints/       # Saved states
 ```
 

@@ -8,7 +8,6 @@ Persistent knowledge management for Claude Code projects with work-in-progress t
 - **Save Points**: Create restore points before risky changes
 - **Auto-Indexing**: Code symbols and knowledge automatically indexed
 - **Pre-Search Context**: Knowledge surfaced before searches via hooks
-- **Version Management**: Automatic version bumping and changelog
 
 ## Installation
 
@@ -43,10 +42,8 @@ claude --plugin-dir /path/to/claude-knowledge-plugin
 | `/ok-know:init` | Initialize knowledge base in current project |
 | `/ok-know:wip` | Save work-in-progress (auto-detects topics) |
 | `/ok-know:wip -f <text>` | Save a fact directly |
-| `/ok-know:save [desc]` | Create restore point with auto-versioning |
+| `/ok-know:save [desc]` | Create restore point before risky changes |
 | `/ok-know:knowledge` | Show knowledge base status |
-| `/ok-know:version` | Show current version |
-| `/ok-know:version -patch\|-minor\|-major` | Bump version and update changelog |
 | `/ok-know:setup` | Bootstrap CLAUDE.md for new projects |
 
 ## Hooks
@@ -91,7 +88,6 @@ After running `/ok-know:init`:
 ├── facts/        # Quick facts, gotchas
 ├── patterns/     # Extracted solutions
 ├── savepoints/   # State snapshots
-├── versions/     # CHANGELOG.md
 ├── coderef.json  # Code symbol index
 └── knowledge.json # Knowledge index
 ```

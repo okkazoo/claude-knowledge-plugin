@@ -14,7 +14,7 @@ Sets up the `.claude/knowledge/` directory structure and CLAUDE.md for persisten
 ### 1. Create Directory Structure
 
 ```bash
-mkdir -p .claude/knowledge/journey .claude/knowledge/facts .claude/knowledge/patterns .claude/knowledge/savepoints .claude/knowledge/versions
+mkdir -p .claude/knowledge/journey .claude/knowledge/facts .claude/knowledge/patterns .claude/knowledge/savepoints
 ```
 
 ### 2. Create Index Files (if missing)
@@ -230,8 +230,7 @@ Structure created:
   ├── journey/      (work-in-progress entries)
   ├── facts/        (quick facts, gotchas)
   ├── patterns/     (extracted solutions)
-  ├── savepoints/   (state snapshots)
-  └── versions/     (version history)
+  └── savepoints/   (state snapshots)
 
 CLAUDE.md: [created/augmented/unchanged]
 
