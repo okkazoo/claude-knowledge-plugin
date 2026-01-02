@@ -9,8 +9,7 @@ argument-hint: -full | -reset
 
 ## Arguments
 
-- No argument: Quick dashboard view
-- `-full`: Expanded view with journey details, entry counts, and timestamps
+- No argument: Show knowledge base status (tree view with details)
 - `-reset`: Reset knowledge base to factory defaults (with options)
 
 ## Instructions
@@ -25,14 +24,6 @@ fi
 ```
 
 ### Check argument and run appropriate command
-
-**If argument is `-full`:**
-```bash
-python .claude/knowledge/journey/_wip_helpers.py knowledge_status -full
-```
-Display the output directly.
-
----
 
 **If argument is `-reset`:**
 

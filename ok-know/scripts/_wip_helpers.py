@@ -41,49 +41,6 @@ def scan_category_folders() -> List[str]:
     return sorted(categories)
 
 
-def scan_journeys_in_category(category: str) -> List[Dict[str, any]]:
-    """
-    Scan child journeys within a parent category folder.
-
-    Args:
-        category: Parent category name (e.g., 'authentication')
-
-    Returns:
-        List of journey info dicts with keys: name, path, keywords, last_updated, entry_count
-    """
-    category_dir = Path(f'.claude/knowledge/journey/{category}')
-
-    if not category_dir.exists():
-        return []
-
-    journeys = []
-    for item in category_dir.iterdir():
-        # Skip files and special folders
-        if item.is_dir() and not item.name.startswith(('_', '.')):
-            meta_file = item / '_meta.md'
-
-            if meta_file.exists():
-                meta = parse_meta(meta_file)
-
-                # Skip completed journeys
-                if meta.get('status') == 'completed':
-                    continue
-
-                # Count entry files
-                entry_count = len([f for f in item.glob('*.md') if f.name != '_meta.md'])
-
-                journeys.append({
-                    'name': item.name,
-                    'path': item,
-                    'keywords': meta.get('keywords', []),
-                    'last_updated': meta.get('last_updated', ''),
-                    'entry_count': entry_count,
-                    'meta': meta
-                })
-
-    return journeys
-
-
 def get_last_updated(journey_path: Path) -> str:
     """
     Read last_updated timestamp from journey's _meta.md.
@@ -555,135 +512,6 @@ def index_fact(fact_file: Path) -> int:
     knowledge_json_path.write_text(json.dumps(data, indent=2), encoding='utf-8')
 
     return len(unique_keywords)
-
-
-def count_facts() -> int:
-    """
-    Count total fact files in knowledge/facts/ folder.
-
-    Returns:
-        Number of fact files
-    """
-    facts_dir = Path('.claude/knowledge/facts')
-
-    if not facts_dir.exists():
-        return 0
-
-    return len([f for f in facts_dir.glob('*.md') if not f.name.startswith('.')])
-
-
-def list_facts(limit: int = 10) -> List[Dict]:
-    """
-    List recent facts from knowledge/facts/ folder.
-
-    Args:
-        limit: Maximum number of facts to return
-
-    Returns:
-        List of fact info dicts with keys: filename, date, preview
-    """
-    facts_dir = Path('.claude/knowledge/facts')
-
-    if not facts_dir.exists():
-        return []
-
-    facts = []
-    for file_path in sorted(facts_dir.glob('*.md'), reverse=True)[:limit]:
-        if file_path.name.startswith('.'):
-            continue
-        try:
-            content = file_path.read_text(encoding='utf-8')
-            # Extract first line after "# Fact:" as preview
-            lines = content.split('\n')
-            preview = ''
-            for line in lines:
-                if line.startswith('# Fact:'):
-                    preview = line.replace('# Fact:', '').strip()
-                    break
-
-            facts.append({
-                'filename': file_path.name,
-                'path': str(file_path),
-                'preview': preview[:80]
-            })
-        except:
-            pass
-
-    return facts
-
-
-# ============================================================================
-# REFACTOR CLEANUP HELPERS
-# ============================================================================
-
-def collect_journeys(category: Optional[str] = None) -> List[Dict]:
-    """
-    Collect all journey information for refactor analysis.
-
-    Args:
-        category: If specified, only collect journeys from this category
-
-    Returns:
-        List of journey info dicts with metadata and sample content
-    """
-    journeys = []
-    journey_dir = Path('.claude/knowledge/journey')
-
-    if not journey_dir.exists():
-        return []
-
-    # Determine which directories to scan
-    if category:
-        # Single category
-        search_dirs = [journey_dir / category]
-    else:
-        # All categories
-        search_dirs = [d for d in journey_dir.iterdir() if d.is_dir() and not d.name.startswith(('_', '.'))]
-
-    for search_dir in search_dirs:
-        if not search_dir.exists():
-            continue
-
-        for item_dir in search_dir.iterdir():
-            if not item_dir.is_dir() or item_dir.name.startswith(('_', '.')):
-                continue
-
-            meta_file = item_dir / '_meta.md'
-            if not meta_file.exists():
-                continue
-
-            meta = parse_meta(meta_file)
-
-            # Skip completed journeys
-            if meta.get('status') == 'completed':
-                continue
-
-            # Collect entry files
-            entry_files = sorted([f for f in item_dir.glob('*.md') if f.name != '_meta.md'])
-
-            # Sample content from most recent entry
-            sample_content = ''
-            if entry_files:
-                latest_entry = entry_files[-1]
-                try:
-                    content = latest_entry.read_text(encoding='utf-8')
-                    sample_content = content[:2000]  # First 2000 chars
-                except:
-                    pass
-
-            journeys.append({
-                'topic': meta.get('topic', item_dir.name),
-                'path': item_dir,
-                'keywords': meta.get('keywords', []),
-                'entry_count': len(entry_files),
-                'entry_files': entry_files,
-                'created': meta.get('created', ''),
-                'last_updated': meta.get('last_updated', ''),
-                'sample_content': sample_content,
-                'meta': meta
-            })
-
-    return journeys
 
 
 def create_backup() -> Path:
@@ -1414,197 +1242,6 @@ def _format_relative_time(timestamp: str) -> str:
 
 
 # ============================================================================
-# FULL SESSION CONTEXT HELPERS
-# ============================================================================
-
-def get_recent_journey_entries(topic: Optional[str] = None, limit: int = 5) -> List[Dict]:
-    """
-    Get recent journey entries for context aggregation.
-
-    If topic is specified, gets entries from that journey.
-    Otherwise, gets entries from all journeys sorted by date.
-
-    Args:
-        topic: Optional specific journey topic to read from
-        limit: Maximum number of entries to return
-
-    Returns:
-        List of entry dicts with keys: path, topic, date, content
-    """
-    journey_dir = Path('.claude/knowledge/journey')
-
-    if not journey_dir.exists():
-        return []
-
-    entries = []
-
-    if topic:
-        # Find specific journey
-        journey_path = find_journey_dir(topic)
-        if journey_path:
-            for entry_file in sorted(journey_path.glob('*.md'), reverse=True)[:limit]:
-                if entry_file.name == '_meta.md':
-                    continue
-                try:
-                    content = entry_file.read_text(encoding='utf-8')
-                    entries.append({
-                        'path': str(entry_file),
-                        'topic': topic,
-                        'filename': entry_file.name,
-                        'content': content
-                    })
-                except:
-                    pass
-    else:
-        # Get from all journeys
-        all_entries = []
-        for category_dir in journey_dir.iterdir():
-            if not category_dir.is_dir() or category_dir.name.startswith(('_', '.')):
-                continue
-            for journey_subdir in category_dir.iterdir():
-                if not journey_subdir.is_dir() or journey_subdir.name.startswith(('_', '.')):
-                    continue
-                for entry_file in journey_subdir.glob('*.md'):
-                    if entry_file.name == '_meta.md':
-                        continue
-                    all_entries.append({
-                        'path': str(entry_file),
-                        'topic': journey_subdir.name,
-                        'category': category_dir.name,
-                        'filename': entry_file.name,
-                        'mtime': entry_file.stat().st_mtime
-                    })
-
-        # Sort by modification time (most recent first)
-        all_entries.sort(key=lambda x: x['mtime'], reverse=True)
-
-        # Read content for top entries
-        for entry in all_entries[:limit]:
-            try:
-                content = Path(entry['path']).read_text(encoding='utf-8')
-                entries.append({
-                    'path': entry['path'],
-                    'topic': entry['topic'],
-                    'category': entry.get('category', ''),
-                    'filename': entry['filename'],
-                    'content': content
-                })
-            except:
-                pass
-
-    return entries
-
-
-def get_session_git_history(since_hours: int = 8) -> Dict:
-    """
-    Get git history for the current session (commits and file changes).
-
-    Args:
-        since_hours: How many hours back to look for commits
-
-    Returns:
-        Dict with keys: commits (list), files_changed (list), diff_summary (str)
-    """
-    import subprocess
-
-    result = {
-        'commits': [],
-        'files_changed': [],
-        'diff_summary': ''
-    }
-
-    try:
-        # Get recent commits
-        since_arg = f"--since='{since_hours} hours ago'"
-        commits_cmd = f'git log --oneline {since_arg}'
-        commits_result = subprocess.run(
-            commits_cmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        if commits_result.returncode == 0 and commits_result.stdout.strip():
-            result['commits'] = commits_result.stdout.strip().split('\n')
-
-        # Get files changed (staged + unstaged)
-        status_result = subprocess.run(
-            'git status --short',
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        if status_result.returncode == 0 and status_result.stdout.strip():
-            result['files_changed'] = status_result.stdout.strip().split('\n')
-
-        # Get diff summary (stat only, not full diff)
-        diff_result = subprocess.run(
-            'git diff --stat HEAD~5 2>/dev/null || git diff --stat',
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        if diff_result.returncode == 0:
-            result['diff_summary'] = diff_result.stdout.strip()[:2000]  # Limit size
-
-    except Exception as e:
-        result['error'] = str(e)
-
-    return result
-
-
-def aggregate_session_context(
-    current_context: str,
-    compacted_summary: Optional[str] = None,
-    topic: Optional[str] = None,
-    include_git: bool = True
-) -> Dict:
-    """
-    Aggregate context from multiple sources for full-session .wip capture.
-
-    Args:
-        current_context: The current visible conversation context
-        compacted_summary: Any compacted/summarized conversation text
-        topic: Optional specific journey topic to read history from
-        include_git: Whether to include git history
-
-    Returns:
-        Dict with aggregated context from all sources
-    """
-    aggregated = {
-        'current_context': current_context,
-        'compacted_summary': compacted_summary or '',
-        'previous_entries': [],
-        'git_history': {},
-        'sources_used': []
-    }
-
-    # Always include current context
-    aggregated['sources_used'].append('current_conversation')
-
-    # Add compacted summary if present
-    if compacted_summary:
-        aggregated['sources_used'].append('compacted_summary')
-
-    # Get previous journey entries
-    previous = get_recent_journey_entries(topic=topic, limit=3)
-    if previous:
-        aggregated['previous_entries'] = previous
-        aggregated['sources_used'].append('previous_journey_entries')
-
-    # Get git history
-    if include_git:
-        git_hist = get_session_git_history()
-        if git_hist.get('commits') or git_hist.get('files_changed'):
-            aggregated['git_history'] = git_hist
-            aggregated['sources_used'].append('git_history')
-
-    return aggregated
-
-
-# ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
 
@@ -1997,69 +1634,6 @@ def find_similar_facts(new_text: str, threshold: float = 0.5) -> List[Dict]:
     return similar
 
 
-def find_similar_journeys(keywords: List[str], topic: str) -> List[Dict]:
-    """
-    Find existing journeys with similar keywords/topic (for dupe-check in .wip).
-
-    Args:
-        keywords: Keywords for the new journey
-        topic: Topic name for the new journey
-
-    Returns:
-        List of similar journeys
-    """
-    journey_dir = Path('.claude/knowledge/journey')
-    similar = []
-
-    if not journey_dir.exists():
-        return []
-
-    new_keywords_set = set(k.lower() for k in keywords)
-    topic_lower = topic.lower()
-
-    for category_dir in journey_dir.iterdir():
-        if not category_dir.is_dir() or category_dir.name.startswith(('_', '.')):
-            continue
-
-        for journey_subdir in category_dir.iterdir():
-            if not journey_subdir.is_dir() or journey_subdir.name.startswith(('_', '.')):
-                continue
-
-            meta_file = journey_subdir / '_meta.md'
-            if not meta_file.exists():
-                continue
-
-            meta = parse_meta(meta_file)
-            existing_topic = meta.get('topic', journey_subdir.name).lower()
-            existing_keywords = meta.get('keywords', [])
-            if isinstance(existing_keywords, str):
-                existing_keywords = [k.strip() for k in existing_keywords.split(',')]
-            existing_keywords_set = set(k.lower() for k in existing_keywords)
-
-            # Check topic similarity
-            topic_sim = _calculate_similarity(topic_lower, existing_topic)
-
-            # Check keyword overlap
-            keyword_overlap = len(new_keywords_set & existing_keywords_set)
-            keyword_score = keyword_overlap / max(len(new_keywords_set), 1)
-
-            # Combined score
-            combined = (topic_sim * 0.6) + (keyword_score * 0.4)
-
-            if combined >= 0.4 or keyword_overlap >= 2:
-                similar.append({
-                    'topic': existing_topic,
-                    'path': str(journey_subdir),
-                    'category': category_dir.name,
-                    'keywords': list(existing_keywords_set)[:5],
-                    'overlap_keywords': list(new_keywords_set & existing_keywords_set),
-                    'score': round(combined, 2)
-                })
-
-    similar.sort(key=lambda x: x['score'], reverse=True)
-    return similar
-
-
 def audit_knowledge() -> str:
     """
     Full knowledge base audit.
@@ -2426,11 +2000,7 @@ if __name__ == '__main__':
         print("Usage: _wip_helpers.py <command> [args]")
         print("\nCommands:")
         print("  scan_categories          - List parent category folders")
-        print("  scan_children <category> - List journeys in category")
-        print("  collect_journeys [cat]   - Collect all journey info")
         print("  save_fact <text>         - Save a fact to knowledge/facts/")
-        print("  count_facts              - Count fact files")
-        print("  list_facts [limit]       - List recent facts")
         print("  knowledge_status         - Show knowledge base status")
         print("  reset_knowledge          - Show what would be reset (dry run)")
         print("  reset_knowledge -archive - Archive current knowledge, then reset")
@@ -2445,7 +2015,6 @@ if __name__ == '__main__':
         print("Audit commands:")
         print("  audit_knowledge          - Full knowledge base audit")
         print("  find_similar_facts <txt> - Find facts similar to text (dupe-check)")
-        print("  find_similar_journeys <topic> <keywords> - Find similar journeys")
         print("")
         print("Meta commands:")
         print("  create_entry <cat> <topic> <content> [slug] - Create journey entry file (auto-timestamps)")
@@ -2457,23 +2026,6 @@ if __name__ == '__main__':
     if command == 'scan_categories':
         print(json.dumps(scan_category_folders()))
 
-    elif command == 'scan_children':
-        category = sys.argv[2] if len(sys.argv) > 2 else ''
-        result = scan_journeys_in_category(category)
-        # Convert Path objects to strings
-        for j in result:
-            j['path'] = str(j['path'])
-        print(json.dumps(result))
-
-    elif command == 'collect_journeys':
-        category = sys.argv[2] if len(sys.argv) > 2 else None
-        journeys = collect_journeys(category)
-        # Convert Path objects to strings
-        for j in journeys:
-            j['path'] = str(j['path'])
-            j['entry_files'] = [str(f) for f in j.get('entry_files', [])]
-        print(json.dumps(journeys, indent=2))
-
     elif command == 'save_fact':
         if len(sys.argv) < 3:
             print("Error: fact text required")
@@ -2482,16 +2034,8 @@ if __name__ == '__main__':
         file_path = save_fact(fact_text)
         print(json.dumps({
             'success': True,
-            'file': str(file_path),
-            'count': count_facts()
+            'file': str(file_path)
         }))
-
-    elif command == 'count_facts':
-        print(json.dumps({'count': count_facts()}))
-
-    elif command == 'list_facts':
-        limit = int(sys.argv[2]) if len(sys.argv) > 2 else 10
-        print(json.dumps(list_facts(limit)))
 
     elif command == 'knowledge_status':
         print(get_knowledge_status())
@@ -2503,32 +2047,6 @@ if __name__ == '__main__':
             print(reset_knowledge(archive=False, dry_run=False))
         else:
             print(reset_knowledge(dry_run=True))
-
-    elif command == 'get_recent_entries':
-        topic = sys.argv[2] if len(sys.argv) > 2 else None
-        limit = int(sys.argv[3]) if len(sys.argv) > 3 else 5
-        entries = get_recent_journey_entries(topic=topic, limit=limit)
-        print(json.dumps(entries, indent=2))
-
-    elif command == 'get_git_history':
-        since_hours = int(sys.argv[2]) if len(sys.argv) > 2 else 8
-        history = get_session_git_history(since_hours=since_hours)
-        print(json.dumps(history, indent=2))
-
-    elif command == 'aggregate_context':
-        # This is called with JSON input via stdin for complex data
-        import sys
-        if not sys.stdin.isatty():
-            input_data = json.loads(sys.stdin.read())
-            result = aggregate_session_context(
-                current_context=input_data.get('current_context', ''),
-                compacted_summary=input_data.get('compacted_summary'),
-                topic=input_data.get('topic'),
-                include_git=input_data.get('include_git', True)
-            )
-            print(json.dumps(result, indent=2))
-        else:
-            print(json.dumps({'error': 'Requires JSON input via stdin'}))
 
     # Pattern commands
     elif command == 'extract_patterns':
@@ -2630,20 +2148,6 @@ if __name__ == '__main__':
         print(json.dumps({
             'query': text[:50],
             'threshold': threshold,
-            'similar': similar,
-            'count': len(similar)
-        }, indent=2))
-
-    elif command == 'find_similar_journeys':
-        if len(sys.argv) < 4:
-            print(json.dumps({'error': 'Topic and keywords required: find_similar_journeys <topic> <keyword1,keyword2,...>'}))
-            sys.exit(1)
-        topic = sys.argv[2]
-        keywords = [k.strip() for k in sys.argv[3].split(',')]
-        similar = find_similar_journeys(keywords, topic)
-        print(json.dumps({
-            'topic': topic,
-            'keywords': keywords,
             'similar': similar,
             'count': len(similar)
         }, indent=2))
