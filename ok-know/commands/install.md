@@ -1,11 +1,10 @@
 ---
-name: init
-description: Initialize knowledge base structure and CLAUDE.md in current project
+name: install
+description: Install knowledge base structure and CLAUDE.md in current project
 allowed-tools: Bash, Write, Read
-argument-hint: [plugin-path]
 ---
 
-# Initialize Knowledge Base
+# Install Knowledge Base
 
 Sets up the `.claude/knowledge/` directory structure and CLAUDE.md for persistent project knowledge.
 

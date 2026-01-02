@@ -33,13 +33,13 @@ claude --plugin-dir /path/to/claude-knowledge-plugin
 /plugins install /path/to/claude-knowledge-plugin
 ```
 
-**Important:** The plugin must be installed before running `/ok-know:init`. The init command reads from Claude's plugin registry (`~/.claude/plugins/installed_plugins.json`) to locate the helper scripts.
+**Important:** The plugin must be installed before running `/ok-know:install`. The init command reads from Claude's plugin registry (`~/.claude/plugins/installed_plugins.json`) to locate the helper scripts.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `/ok-know:init` | Initialize knowledge base in current project |
+| `/ok-know:install` | Initialize knowledge base in current project |
 | `/ok-know:wip` | Save work-in-progress (auto-detects topics) |
 | `/ok-know:wip -f <text>` | Save a fact directly |
 | `/ok-know:save [desc]` | Create restore point before risky changes |
@@ -80,7 +80,7 @@ Task(subagent_type="Plan", prompt="Plan implementation for user auth")
 
 ## Directory Structure
 
-After running `/ok-know:init`:
+After running `/ok-know:install`:
 
 ```
 .claude/knowledge/
@@ -96,7 +96,7 @@ After running `/ok-know:init`:
 
 1. **Install the plugin** (see Installation above)
 2. **Navigate to your project** directory in Claude Code
-3. **Run `/ok-know:init`** to set up the knowledge base structure
+3. **Run `/ok-know:install`** to set up the knowledge base structure
 4. **Use `/ok-know:wip`** to save progress as you work
 5. **Use `/ok-know:save`** before risky changes
 
@@ -104,9 +104,7 @@ After running `/ok-know:init`:
 
 **"Could not find ok-know plugin"** - The plugin isn't installed. Run `/plugins install ok-know` first.
 
-**Helper script not copied** - If `/ok-know:init` completes but the helper script is missing, check that:
-- The plugin is in the registry: `cat ~/.claude/plugins/installed_plugins.json | grep ok-know`
-- Python 3 is available (used to parse the registry)
+**Commands fail with "No module named _wip_helpers"** - The plugin uses `${CLAUDE_PLUGIN_ROOT}` to reference scripts. Ensure the plugin is properly installed via the marketplace or `/plugins install`.
 
 ## Authors
 
