@@ -1,7 +1,7 @@
 ---
 name: init
 description: Initialize knowledge base structure and CLAUDE.md in current project
-allowed-tools: Bash, Write, Read, AskUserQuestion
+allowed-tools: Bash, Write, Read
 argument-hint: [plugin-path]
 ---
 

@@ -33,20 +33,7 @@ Describe what you are creating:
 
 ### Step 3: Ask Clarifying Questions (If Needed)
 
-If the description is unclear or could go multiple directions, ask follow-up questions about the **goal and use case** - NOT about technical choices.
-
-**Good questions (about what they want):**
-- "How will people use this - through a browser, command line, or something else?"
-- "Is this for just you, or will others use it too?"
-- "Does it need to remember data between uses?"
-- "Will it need to connect to any external services?"
-- "Should it run continuously or just when triggered?"
-
-**Bad questions (technical - don't ask these):**
-- "Should we use Flask or FastAPI?"
-- "Do you want REST or GraphQL?"
-- "Should we use SQLite or PostgreSQL?"
-- "What testing framework do you prefer?"
+If the description is unclear or could go multiple directions, use **AskUserQuestion** to gather details about goals and use cases - NOT technical choices.
 
 **When to ask follow-ups:**
 - Description is very short (under 10 words)
@@ -58,7 +45,57 @@ If the description is unclear or could go multiple directions, ask follow-up que
 - User mentioned how it will be used
 - Only one reasonable implementation approach
 
-Limit to 3 follow-up questions maximum.
+**Use AskUserQuestion with relevant questions from this set:**
+
+```json
+{
+  "questions": [
+    {
+      "question": "How will people use this?",
+      "header": "Interface",
+      "multiSelect": false,
+      "options": [
+        {"label": "Browser/Web", "description": "Access through a web browser"},
+        {"label": "Command line", "description": "Run from terminal/shell"},
+        {"label": "API", "description": "Other programs will call it"},
+        {"label": "Desktop app", "description": "Native application with GUI"}
+      ]
+    },
+    {
+      "question": "Who is this for?",
+      "header": "Audience",
+      "multiSelect": false,
+      "options": [
+        {"label": "Just me", "description": "Personal tool, minimal polish needed"},
+        {"label": "My team", "description": "Shared tool, needs docs and error handling"},
+        {"label": "Public users", "description": "Production quality, robust error handling"}
+      ]
+    },
+    {
+      "question": "Does it need to save/remember data?",
+      "header": "Persistence",
+      "multiSelect": false,
+      "options": [
+        {"label": "No", "description": "Stateless, processes and exits"},
+        {"label": "Yes, simple", "description": "Files or simple database"},
+        {"label": "Yes, complex", "description": "Relational data, queries, multiple tables"}
+      ]
+    },
+    {
+      "question": "How should it run?",
+      "header": "Run mode",
+      "multiSelect": false,
+      "options": [
+        {"label": "On-demand", "description": "Run when triggered, then exit"},
+        {"label": "Always running", "description": "Background service/daemon"},
+        {"label": "Scheduled", "description": "Runs periodically (cron, task scheduler)"}
+      ]
+    }
+  ]
+}
+```
+
+**Only ask questions that are unclear from the description.** Skip questions where the answer is obvious. Maximum 3 questions.
 
 ### Step 4: Auto-Detect Existing Setup
 
@@ -144,8 +181,8 @@ User: A tool to manage my photos
 
 [Needs clarification - could be CLI, web app, or desktop app]
 
-How will you use this - through a browser, command line, or desktop app?
-User: Command line, I want to organize photos into folders by date
+[AskUserQuestion appears with "How will people use this?" options]
+User selects: Command line
 
 [Now clear - CLI tool for file organization]
 
