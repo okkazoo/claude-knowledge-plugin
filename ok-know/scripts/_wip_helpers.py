@@ -2188,8 +2188,8 @@ if __name__ == '__main__':
         # Open in new window based on platform
         system = platform.system()
         if system == 'Windows':
-            # Use start to open new cmd window, type the file, then pause
-            os.system(f'start cmd /k "type {temp_file} && echo. && echo Press any key to close... && pause >nul"')
+            # Use start to open new cmd window with UTF-8 encoding
+            os.system(f'start cmd /k "chcp 65001 >nul && type {temp_file} && echo. && echo Press any key to close... && pause >nul"')
         elif system == 'Darwin':  # macOS
             os.system(f'open -a Terminal "{temp_file}"')
         else:  # Linux
