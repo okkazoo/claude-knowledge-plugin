@@ -2189,11 +2189,8 @@ if __name__ == '__main__':
         # Open in new window based on platform (non-blocking)
         system = platform.system()
         if system == 'Windows':
-            # Use 'start' command - window stays open for reading, close manually when done
-            subprocess.Popen(
-                f'start "Knowledge Status" cmd /k "chcp 65001 >nul && type {temp_file} && echo."',
-                shell=True
-            )
+            # Open the temp file with default text editor (notepad)
+            os.startfile(str(temp_file))
         elif system == 'Darwin':  # macOS
             subprocess.Popen(['open', '-a', 'Terminal', str(temp_file)])
         else:  # Linux
