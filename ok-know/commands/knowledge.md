@@ -46,7 +46,7 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" reset_knowledge
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_status
 ```
-Display the output directly.
+**IMPORTANT**: Display the command output EXACTLY as returned. Do NOT summarize, interpret, or add any commentary. Just show the raw output with its formatting preserved. The output already contains properly formatted status information.
 
 ---
 
