@@ -2173,6 +2173,34 @@ if __name__ == '__main__':
     elif command == 'knowledge_patterns':
         print(get_knowledge_patterns())
 
+    elif command == 'knowledge_window':
+        # Open knowledge status in a separate terminal window
+        import tempfile
+        import platform
+
+        # Generate the full status
+        content = get_knowledge_status()
+
+        # Write to temp file
+        temp_file = Path(tempfile.gettempdir()) / 'claude_knowledge_status.txt'
+        temp_file.write_text(content, encoding='utf-8')
+
+        # Open in new window based on platform
+        system = platform.system()
+        if system == 'Windows':
+            # Use start to open new cmd window, type the file, then pause
+            os.system(f'start cmd /k "type {temp_file} && echo. && echo Press any key to close... && pause >nul"')
+        elif system == 'Darwin':  # macOS
+            os.system(f'open -a Terminal "{temp_file}"')
+        else:  # Linux
+            # Try common terminals
+            for term in ['gnome-terminal', 'xterm', 'konsole']:
+                if shutil.which(term):
+                    os.system(f'{term} -e "cat {temp_file}; read -p \\"Press Enter to close...\\"" &')
+                    break
+
+        print("Opened in external window.")
+
     elif command == 'reset_knowledge':
         if '-archive' in sys.argv:
             print(reset_knowledge(archive=True, dry_run=False))

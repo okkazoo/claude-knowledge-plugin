@@ -56,30 +56,16 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" reset_knowledge
 
 **Otherwise (no argument):**
 
-Run these commands separately (not chained) so output displays in parts:
+Open knowledge status in a separate window to minimize context usage:
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_header
+python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_window
 ```
 
-```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_facts
-```
+This opens a new terminal window with the knowledge status. Only respond with:
+"Knowledge base opened in external window."
 
-```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_journeys
-```
-
-```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_patterns
-```
-
-## CRITICAL OUTPUT RULES
-
-After running these commands:
-1. Display each command's output EXACTLY as it appears
-2. **STOP** - Do NOT add any text after the outputs
-3. Do NOT summarize, interpret, or add commentary
+Do NOT summarize, interpret, or add any other commentary.
 
 ---
 
