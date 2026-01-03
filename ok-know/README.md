@@ -87,7 +87,6 @@ After running `/ok-know:install`:
 ├── facts/        # Quick facts, gotchas
 ├── patterns/     # Extracted solutions
 ├── savepoints/   # State snapshots
-├── coderef.json  # Code symbol index
 └── knowledge.json # Knowledge index
 ```
 

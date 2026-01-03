@@ -50,33 +50,6 @@ try:
         scored.sort(key=lambda x: x[0], reverse=True)
         return [m for _, m in scored[:5]]
 
-    def search_coderef(pattern):
-        """Search coderef.json for matching symbols."""
-        matches = []
-        coderef_path = Path('.claude/knowledge/coderef.json')
-        if not coderef_path.exists():
-            return matches
-
-        try:
-            data = json.loads(coderef_path.read_text(encoding='utf-8'))
-        except:
-            return matches
-
-        pattern_lower = pattern.lower()
-
-        for filepath, info in data.get('files', {}).items():
-            if not Path(filepath).exists():
-                continue
-
-            for symbol in info.get('symbols', []):
-                name = symbol.get('name', '')
-                if pattern_lower in name.lower():
-                    sym_type = symbol.get('type', 'symbol')
-                    line = symbol.get('line', 0)
-                    matches.append(f"  - {name} ({sym_type}) -> {filepath}:{line}")
-
-        return matches[:10]
-
     def search_knowledge_keywords(pattern):
         """Search knowledge.json for matching keywords."""
         matches = []
@@ -123,19 +96,14 @@ try:
             return
 
         pattern_matches = search_patterns(pattern)
-        code_matches = search_coderef(pattern)
         knowledge_matches = search_knowledge_keywords(pattern)
 
-        if pattern_matches or code_matches or knowledge_matches:
+        if pattern_matches or knowledge_matches:
             msg_parts = [f"Index matches for '{pattern}':"]
 
             if pattern_matches:
                 msg_parts.append("\n>> PATTERNS (check before trying):")
                 msg_parts.extend(pattern_matches)
-
-            if code_matches:
-                msg_parts.append("\nCode refs:")
-                msg_parts.extend(code_matches)
 
             if knowledge_matches:
                 msg_parts.append("\nKnowledge:")

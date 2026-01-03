@@ -1292,15 +1292,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
                 if item.is_dir():
                     safe_rmtree(item)
 
-        # Reset coderef.json
-        coderef_file = knowledge_dir / 'coderef.json'
-        coderef_content = {
-            "version": 1,
-            "updated": datetime.now().isoformat(),
-            "files": {}
-        }
-        coderef_file.write_text(json.dumps(coderef_content, indent=2), encoding='utf-8')
-
         # Reset knowledge.json
         knowledge_json = knowledge_dir / 'knowledge.json'
         knowledge_content = {
@@ -1310,7 +1301,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
         }
         knowledge_json.write_text(json.dumps(knowledge_content, indent=2), encoding='utf-8')
 
-        lines.append("✓ Reset coderef.json")
         lines.append("✓ Reset knowledge.json")
         lines.append("✓ Cleared journeys")
         lines.append("✓ Cleared facts")
@@ -1929,7 +1919,7 @@ def audit_knowledge() -> str:
     Checks:
     1. Redundant/overlapping facts
     2. Journey consolidation opportunities
-    3. Cross-reference validation (coderef.json, knowledge.json)
+    3. Cross-reference validation (knowledge.json)
 
     Returns:
         Formatted audit report
@@ -2218,28 +2208,6 @@ def audit_knowledge() -> str:
 
     # Store for summary
     needs_rebuild = len(orphaned_refs) > 0 or len(unindexed_files) > 0
-
-    lines.append("")
-
-    # Check coderef.json
-    lines.append("### coderef.json")
-    coderef_path = knowledge_dir / 'coderef.json'
-
-    if coderef_path.exists():
-        try:
-            cr_data = json.loads(coderef_path.read_text(encoding='utf-8'))
-            files = cr_data.get('files', {})
-
-            if files:
-                lines.append(f"  ✓ Contains {len(files)} file references")
-            else:
-                lines.append("  ✓ Empty (no code indexed yet)")
-
-        except json.JSONDecodeError:
-            lines.append("  ⚠️  Invalid JSON format")
-            issues_found += 1
-    else:
-        lines.append("  _File not found_")
 
     lines.append("")
 

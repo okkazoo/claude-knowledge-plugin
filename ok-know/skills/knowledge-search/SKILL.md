@@ -33,7 +33,6 @@ This is not optional - it prevents:
 ```
 .claude/knowledge/
 ├── knowledge.json    # Pattern + keyword index (auto-searched by hooks)
-├── coderef.json      # Code symbol index
 ├── facts/            # Quick facts and learnings (.wip -f)
 │   └── *.md          # Individual fact entries
 ├── journey/          # Development journeys

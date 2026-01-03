@@ -37,7 +37,6 @@ mkdir -p .claude/knowledge/journey .claude/knowledge/facts .claude/knowledge/pat
 
 ```bash
 [ -f ".claude/knowledge/knowledge.json" ] && echo "knowledge.json exists" || echo "creating knowledge.json"
-[ -f ".claude/knowledge/coderef.json" ] && echo "coderef.json exists" || echo "creating coderef.json"
 ```
 
 If `.claude/knowledge/knowledge.json` does NOT exist, create it:
@@ -47,15 +46,6 @@ If `.claude/knowledge/knowledge.json` does NOT exist, create it:
   "updated": "",
   "files": {},
   "patterns": []
-}
-```
-
-If `.claude/knowledge/coderef.json` does NOT exist, create it:
-```json
-{
-  "version": 1,
-  "updated": null,
-  "files": {}
 }
 ```
 
