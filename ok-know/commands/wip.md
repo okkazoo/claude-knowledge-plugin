@@ -98,14 +98,22 @@ wip                  Autonomous mode - analyzes FULL conversation context
    <full fact text>
    ```
 
-4. **Confirm to user** (use blue for facts):
+4. **Confirm to user** (use Phase 2 format - blue for facts):
+
+   ANSI codes: Blue=`\033[94m`, Reset=`\033[0m`
+   Dotted line: `·` × 34 characters
+
    ```
-   FACTS
+   Saved:
+
+   FACTS [1]
    ··································
-   [F1] <fact text preview>
-        → facts/YYYY-MM-DD-<slug>.md
+   YYYY-MM-DD-<slug>.md
+
+   Total: 1 fact saved
    ```
-   Apply blue color to "FACTS", dotted line, and "[F1]" prefix.
+
+   Apply blue color to "FACTS [1]" header and dotted line.
 
 ---
 
@@ -142,27 +150,36 @@ Look for topic boundaries like:
 - Different areas of the codebase
 - Distinct problem domains
 
-### Step 3: Display Items and Present Options
+### Step 3: Display Items and Present Options (Phase 1)
 
-**First, display detected items as formatted text:**
+**Phase 1 format**: Headers WITHOUT counts, WITH [F#] [J#] prefixes for selection.
+
+ANSI codes: Blue=`\033[94m`, Green=`\033[92m`, Reset=`\033[0m`
+Dotted line: `·` × 34 characters
+
+**Display detected items:**
 
 ```
 Analyzing full conversation...
 
-FACTS
-----------------------------------
+FACTS                                    ← Blue
+··································       ← Blue
 [F1] API rate limit is 100 req/min
 [F2] Windows needs Python313 in PATH first
 
+JOURNEYS                                 ← Green
+··································       ← Green
+[J1] api-integration/rate-limiting
+     Brief description of what was done
 
-JOURNEYS
-----------------------------------
-[J1] wip-command-ui-improvements
-     Removed -j flag, added AskUserQuestion
-
-[J2] hook-error-debugging
-     Debugged PreToolUse:Grep hook error
+[J2] authentication/oauth-refresh
+     Brief description of what was done
 ```
+
+Apply colors:
+- "FACTS" and its dotted line: blue (`\033[94m`)
+- "JOURNEYS" and its dotted line: green (`\033[92m`)
+- Content text (including [F#] and [J#]): default/white
 
 **Then, use AskUserQuestion for selection:**
 
@@ -285,42 +302,48 @@ For each journey topic selected:
 
    Returns JSON with: `success`, `file`, `category`, `topic`, `patterns_indexed`
 
-### Step 5: Show Summary
+### Step 5: Show Summary (Phase 2)
 
-After saving, display with consistent color coding:
-- **Facts**: Blue - header, dotted line, [F#] prefix
-- **Journeys**: Green - header, dotted line, [J#] prefix
-- Content text: default/white
+**Phase 2 format**: Headers WITH counts, WITHOUT [F#] [J#] prefixes, tree structure for journeys.
 
 ANSI codes: Blue=`\033[94m`, Green=`\033[92m`, Reset=`\033[0m`
 Dotted line: `·` × 34 characters
 
-Example output (print these with actual ANSI codes):
+Example output (print with actual ANSI codes):
 ```
 Saved:
 
-FACTS
-··································
-[F1] On Windows use python not python3
-     → facts/2024-12-21-windows-python.md
+FACTS [1]                                ← Blue
+··································       ← Blue
+2024-12-21-windows-python.md
 
-JOURNEYS
-··································
-[J1] auth-token-refresh
-     → authentication/token-refresh/2024-12-21-15-30-oauth-cookies.md
-     Key learnings: JWT failed (CORS), HTTP-only cookies work
+JOURNEYS [2]                             ← Green
+··································       ← Green
+authentication/
+└── 2024-12-21-oauth-refresh-fix.md
 
-[J2] database-migration
-     → infrastructure/database-migration/2024-12-21-15-30-user-prefs.md
+infrastructure/
+└── 2024-12-21-database-migration.md
 
 Total: 1 fact, 2 journeys saved
 ```
 
 Apply colors:
-- "FACTS" and its dotted line: blue
-- "[F#]" prefix: blue, rest of line: default
-- "JOURNEYS" and its dotted line: green
-- "[J#]" prefix: green, rest of line: default
+- "FACTS [N]" header and its dotted line: blue (`\033[94m`)
+- "JOURNEYS [N]" header and its dotted line: green (`\033[92m`)
+- All content (filenames, tree structure): default/white
+
+**Multiple entries under same category:**
+```
+JOURNEYS [3]                             ← Green
+··································       ← Green
+authentication/
+├── 2024-12-21-oauth-refresh-fix.md
+└── 2024-12-21-jwt-migration.md
+
+api-integration/
+└── 2024-12-21-rate-limiting-setup.md
+```
 
 ---
 
@@ -331,9 +354,13 @@ Apply colors:
 User: wip -f On Windows use python not python3 in shebangs
 
 Claude:
-Saved to facts/2024-12-21-windows-python-shebang.md
+Saved:
 
-Total facts: 1
+FACTS [1]                                ← Blue
+··································       ← Blue
+2024-12-21-windows-python-shebang.md
+
+Total: 1 fact saved
 ```
 
 ### Autonomous Mode Example
@@ -343,17 +370,16 @@ User: wip
 Claude:
 Analyzing full conversation...
 
-FACTS
-----------------------------------
+FACTS                                    ← Blue (Phase 1)
+··································       ← Blue
 [F1] API rate limit is 100 req/min
 
-
-JOURNEYS
-----------------------------------
-[J1] auth-token-refresh
+JOURNEYS                                 ← Green (Phase 1)
+··································       ← Green
+[J1] authentication/oauth-refresh
      OAuth token refresh. Tried JWT (failed - CORS), switched to cookies.
 
-[J2] database-migration
+[J2] infrastructure/database-migration
      Added user_preferences table. Pending: backfill.
 
 [AskUserQuestion appears]
@@ -361,14 +387,17 @@ User selects: Save ALL
 
 Saved:
 
-[F1] API rate limit is 100 req/min
-  → facts/2024-12-21-api-rate-limit.md
+FACTS [1]                                ← Blue (Phase 2)
+··································       ← Blue
+2024-12-21-api-rate-limit.md
 
-[J1] auth-token-refresh
-  → authentication/token-refresh/2024-12-21-15-30-oauth-cookies.md
+JOURNEYS [2]                             ← Green (Phase 2)
+··································       ← Green
+authentication/
+└── 2024-12-21-oauth-refresh.md
 
-[J2] database-migration
-  → infrastructure/database-migration/2024-12-21-15-30-user-prefs.md
+infrastructure/
+└── 2024-12-21-database-migration.md
 
 Total: 1 fact, 2 journeys saved
 ```
@@ -380,15 +409,14 @@ User: wip
 Claude:
 Analyzing full conversation...
 
-FACTS
-----------------------------------
+FACTS                                    ← Blue (Phase 1)
+··································       ← Blue
 [F1] API rate limit is 100 req/min
 [F2] Windows needs Python313 first in PATH
 
-
-JOURNEYS
-----------------------------------
-[J1] wip-command-refactor
+JOURNEYS                                 ← Green (Phase 1)
+··································       ← Green
+[J1] wip-command/ui-refactor
      Removed -j flag, added AskUserQuestion UI
 
 [AskUserQuestion appears]
@@ -396,11 +424,14 @@ User selects: Other → types "F1,J1"
 
 Saved:
 
-[F1] API rate limit is 100 req/min
-  → facts/2024-12-21-api-rate-limit.md
+FACTS [1]                                ← Blue (Phase 2)
+··································       ← Blue
+2024-12-21-api-rate-limit.md
 
-[J1] wip-command-refactor
-  → wip-command-refactor/2024-12-21-15-30-askuserquestion-ui.md
+JOURNEYS [1]                             ← Green (Phase 2)
+··································       ← Green
+wip-command/
+└── 2024-12-21-ui-refactor.md
 
 Total: 1 fact, 1 journey saved
 ```

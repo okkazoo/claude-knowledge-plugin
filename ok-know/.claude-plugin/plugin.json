@@ -1,5 +1,5 @@
 {
   "name": "ok-know",
-  "version": "1.6.4",
+  "version": "1.6.5",
   "description": "Persistent knowledge management with work-in-progress tracking, save points, and auto-indexing for Claude Code projects"
 }

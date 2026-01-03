@@ -779,30 +779,45 @@ def get_knowledge_status() -> str:
     lines.append("")
     lines.append("")
 
-    # Facts - BLUE header and dotted line
-    lines.append(f"{BLUE}FACTS{RESET}")
+    # Facts - BLUE header with count, dotted line below
+    lines.append(f"{BLUE}FACTS [{facts_count}]{RESET}")
     lines.append(f"{BLUE}{dotted_line}{RESET}")
     if facts_detail:
         facts_dir_path = Path('.claude/knowledge/facts')
         if facts_dir_path.exists():
             all_facts = sorted([f.name for f in facts_dir_path.glob('*.md') if not f.name.startswith('.')], reverse=True)
-            for idx, fact_name in enumerate(all_facts, 1):
-                lines.append(f"{BLUE}[F{idx}]{RESET} {fact_name}")
+            for fact_name in all_facts:
+                lines.append(fact_name)
     else:
         lines.append("No facts yet.")
     lines.append("")
     lines.append("")
 
-    # Journeys - GREEN header and dotted line
-    lines.append(f"{GREEN}JOURNEYS{RESET}")
+    # Journeys - GREEN header with count, dotted line below, tree structure
+    lines.append(f"{GREEN}JOURNEYS [{journey_count}]{RESET}")
     lines.append(f"{GREEN}{dotted_line}{RESET}")
     if journeys_detail:
-        j_num = 1
-        for cat in journeys_detail:
+        for cat_idx, cat in enumerate(journeys_detail):
+            # Category header
+            lines.append(f"{cat['category']}/")
+
+            # Get all entry files for this category's journeys
+            journey_entries = []
             for j in cat['journeys']:
-                journey_name = f"{cat['category']}/{j['name']}"
-                lines.append(f"{GREEN}[J{j_num}]{RESET} {journey_name}")
-                j_num += 1
+                journey_path = Path(f".claude/knowledge/journey/{cat['category']}/{j['name']}")
+                if journey_path.exists():
+                    entry_files = sorted([f.name for f in journey_path.glob('*.md') if f.name != '_meta.md'])
+                    journey_entries.extend(entry_files)
+
+            # Display entries with tree structure
+            for e_idx, entry_name in enumerate(journey_entries):
+                is_last = (e_idx == len(journey_entries) - 1)
+                prefix = "└── " if is_last else "├── "
+                lines.append(f"{prefix}{entry_name}")
+
+            # Blank line between categories (except last)
+            if cat_idx < len(journeys_detail) - 1:
+                lines.append("")
     else:
         lines.append("No journeys yet.")
     lines.append("")
