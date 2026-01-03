@@ -1663,6 +1663,172 @@ def normalize_topic_name(topic: str) -> str:
 # KNOWLEDGE AUDIT HELPERS
 # ============================================================================
 
+def scan_actual_journey_files() -> List[Dict]:
+    """
+    Scan filesystem for all actual journey files.
+
+    Returns:
+        List of dicts with 'rel_path', 'title', 'category', 'date' for each journey file
+    """
+    journey_dir = Path('.claude/knowledge/journey')
+    files = []
+
+    if not journey_dir.exists():
+        return files
+
+    for md_file in journey_dir.rglob('*.md'):
+        if md_file.name == '_meta.md' or md_file.name.startswith('.'):
+            continue
+
+        # Get relative path from knowledge base
+        try:
+            rel_path = str(md_file.relative_to(Path('.claude/knowledge'))).replace('\\', '/')
+        except ValueError:
+            continue
+
+        # Extract title from file content
+        title = md_file.stem
+        try:
+            content = md_file.read_text(encoding='utf-8')
+            for line in content.split('\n'):
+                if line.startswith('# '):
+                    title = line[2:].strip()
+                    break
+        except:
+            pass
+
+        # Parse path for category
+        parts = rel_path.split('/')
+        category = parts[1] if len(parts) > 2 else 'unknown'
+
+        # Extract date from filename (format: YYYY-MM-DD-...)
+        date = ''
+        if len(md_file.stem) >= 10:
+            date = md_file.stem[:10]
+
+        files.append({
+            'rel_path': rel_path,
+            'title': title,
+            'category': category,
+            'date': date
+        })
+
+    return files
+
+
+def rebuild_knowledge_index() -> Dict:
+    """
+    Rebuild knowledge.json from actual filesystem contents.
+
+    Scans all journey files, extracts metadata and patterns,
+    and rebuilds the index.
+
+    Returns:
+        Dict with 'success', 'files_indexed', 'patterns_indexed'
+    """
+    knowledge_dir = Path('.claude/knowledge')
+    knowledge_json_path = knowledge_dir / 'knowledge.json'
+
+    # Start with fresh data structure
+    data = {
+        'version': 1,
+        'updated': datetime.now().isoformat(),
+        'files': {},
+        'patterns': []
+    }
+
+    files_indexed = 0
+    patterns_indexed = 0
+
+    # Scan all journey files
+    journey_files = scan_actual_journey_files()
+
+    for file_info in journey_files:
+        rel_path = file_info['rel_path']
+        full_path = knowledge_dir / rel_path
+
+        # Add to files index
+        data['files'][rel_path] = {
+            'title': file_info['title'],
+            'category': file_info['category'],
+            'date': file_info['date'],
+            'status': 'in_progress'  # Default status
+        }
+        files_indexed += 1
+
+        # Extract patterns from content
+        try:
+            content = full_path.read_text(encoding='utf-8')
+            patterns = extract_patterns_from_content(content)
+
+            for p in patterns:
+                data['patterns'].append({
+                    'type': p.get('type', 'solution'),
+                    'text': p.get('pattern', ''),
+                    'context': [k.strip() for k in p.get('context', '').split(',') if k.strip()],
+                    'source': rel_path
+                })
+                patterns_indexed += 1
+        except:
+            pass
+
+    # Also index facts
+    facts_dir = knowledge_dir / 'facts'
+    if facts_dir.exists():
+        for fact_file in facts_dir.glob('*.md'):
+            if fact_file.name.startswith('.'):
+                continue
+
+            try:
+                rel_path = f"facts/{fact_file.name}"
+                content = fact_file.read_text(encoding='utf-8')
+
+                # Extract title
+                title = fact_file.stem
+                for line in content.split('\n'):
+                    if line.startswith('# Fact:'):
+                        title = line.replace('# Fact:', '').strip()
+                        break
+
+                # Extract keywords
+                fact_text = ''
+                capture = False
+                for line in content.split('\n'):
+                    if line.startswith('## Date:'):
+                        capture = True
+                        continue
+                    if capture:
+                        fact_text += line + ' '
+
+                stopwords = {'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been',
+                            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+                            'could', 'should', 'may', 'might', 'must', 'to', 'of', 'in',
+                            'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into', 'and',
+                            'or', 'but', 'if', 'then', 'because', 'so', 'this', 'that',
+                            'it', 'its', 'you', 'your', 'use', 'using', 'used'}
+
+                words = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_-]{2,}\b', fact_text.lower())
+                keywords = [w for w in words if w not in stopwords][:15]
+
+                data['files'][rel_path] = {
+                    'title': f"Fact: {title[:60]}",
+                    'modified': datetime.now().isoformat(),
+                    'keywords': keywords
+                }
+                files_indexed += 1
+            except:
+                pass
+
+    # Write the rebuilt index
+    knowledge_json_path.write_text(json.dumps(data, indent=2), encoding='utf-8')
+
+    return {
+        'success': True,
+        'files_indexed': files_indexed,
+        'patterns_indexed': patterns_indexed
+    }
+
+
 def _extract_keywords(text: str) -> set:
     """Extract meaningful keywords from text for similarity comparison."""
     # Remove common words
@@ -1965,22 +2131,39 @@ def audit_knowledge() -> str:
     lines.append("### knowledge.json")
     knowledge_json_path = knowledge_dir / 'knowledge.json'
     kj_issues = []
+    orphaned_refs = []
+    unindexed_files = []
+
+    # Get actual files on filesystem
+    actual_journey_files = scan_actual_journey_files()
+    actual_file_paths = {f['rel_path'] for f in actual_journey_files}
 
     if knowledge_json_path.exists():
         try:
             kj_data = json.loads(knowledge_json_path.read_text(encoding='utf-8'))
 
-            # Check files references
-            files = kj_data.get('files', {})
-            for rel_path, info in files.items():
+            # Check files references - find orphaned references
+            indexed_files = kj_data.get('files', {})
+            indexed_journey_paths = set()
+
+            for rel_path, info in indexed_files.items():
+                if rel_path.startswith('journey/'):
+                    indexed_journey_paths.add(rel_path)
                 full_path = knowledge_dir / rel_path
                 if not full_path.exists():
-                    kj_issues.append(f"Missing file: `{rel_path}`")
+                    orphaned_refs.append(rel_path)
+                    issues_found += 1
+
+            # Find unindexed files (files that exist but aren't in index)
+            for actual_path in actual_file_paths:
+                if actual_path not in indexed_journey_paths:
+                    unindexed_files.append(actual_path)
                     issues_found += 1
 
             # Check pattern sources
             patterns = kj_data.get('patterns', [])
             source_files = set()
+            orphaned_pattern_sources = []
             for p in patterns:
                 source = p.get('source', '')
                 if source:
@@ -1989,21 +2172,52 @@ def audit_knowledge() -> str:
             for source in source_files:
                 full_path = knowledge_dir / source
                 if not full_path.exists():
-                    kj_issues.append(f"Pattern source missing: `{source}`")
+                    orphaned_pattern_sources.append(source)
                     issues_found += 1
 
-            if kj_issues:
-                for issue in kj_issues:
-                    lines.append(f"  ⚠️  {issue}")
-            else:
-                lines.append(f"  ✓ All {len(files)} file references valid")
+            # Report orphaned references
+            if orphaned_refs:
+                lines.append("")
+                lines.append(f"  **⚠️  Orphaned references ({len(orphaned_refs)}):**")
+                lines.append("  _Index references files that no longer exist_")
+                for ref in orphaned_refs[:5]:
+                    lines.append(f"    - `{ref}`")
+                if len(orphaned_refs) > 5:
+                    lines.append(f"    _... and {len(orphaned_refs) - 5} more_")
+
+            # Report unindexed files
+            if unindexed_files:
+                lines.append("")
+                lines.append(f"  **⚠️  Unindexed files ({len(unindexed_files)}):**")
+                lines.append("  _These journey files exist but are not in the index_")
+                for uf in unindexed_files[:5]:
+                    lines.append(f"    - `{uf}`")
+                if len(unindexed_files) > 5:
+                    lines.append(f"    _... and {len(unindexed_files) - 5} more_")
+
+            # Report orphaned pattern sources
+            if orphaned_pattern_sources:
+                lines.append("")
+                lines.append(f"  **⚠️  Orphaned pattern sources ({len(orphaned_pattern_sources)}):**")
+                for src in orphaned_pattern_sources[:5]:
+                    lines.append(f"    - `{src}`")
+                if len(orphaned_pattern_sources) > 5:
+                    lines.append(f"    _... and {len(orphaned_pattern_sources) - 5} more_")
+
+            # Success message if no issues
+            if not orphaned_refs and not unindexed_files and not orphaned_pattern_sources:
+                lines.append(f"  ✓ All {len(indexed_files)} file references valid")
                 lines.append(f"  ✓ All {len(source_files)} pattern sources valid")
+                lines.append(f"  ✓ All {len(actual_file_paths)} journey files indexed")
 
         except json.JSONDecodeError:
             lines.append("  ⚠️  Invalid JSON format")
             issues_found += 1
     else:
         lines.append("  _File not found_")
+
+    # Store for summary
+    needs_rebuild = len(orphaned_refs) > 0 or len(unindexed_files) > 0
 
     lines.append("")
 
@@ -2104,11 +2318,29 @@ def audit_knowledge() -> str:
     else:
         lines.append(f"⚠️  **Found {issues_found} issue(s) to address**")
         lines.append("")
-        lines.append("To fix issues:")
+
+        # Check if rebuild is the recommended fix
+        if needs_rebuild:
+            lines.append("### Recommended: Rebuild Index")
+            lines.append("")
+            lines.append("The knowledge.json index is out of sync with actual files.")
+            if unindexed_files:
+                lines.append(f"  - {len(unindexed_files)} journey files exist but aren't indexed")
+            if orphaned_refs:
+                lines.append(f"  - {len(orphaned_refs)} index entries point to missing files")
+            lines.append("")
+            lines.append("**Run `rebuild_knowledge_index` to fix automatically.**")
+            lines.append("")
+            lines.append("This will:")
+            lines.append("  - Scan all actual journey and fact files")
+            lines.append("  - Rebuild knowledge.json from scratch")
+            lines.append("  - Re-extract all patterns")
+            lines.append("")
+
+        lines.append("### Other fixes:")
         lines.append("1. Review redundant facts and consolidate manually")
         lines.append("2. Reorganize journeys using suggested groupings")
-        lines.append("3. Delete orphaned references or run re-indexing")
-        lines.append("4. Clean orphaned entries from commit-history.md")
+        lines.append("3. Clean orphaned entries from commit-history.md")
 
     lines.append("")
 
@@ -2136,6 +2368,7 @@ if __name__ == '__main__':
         print("")
         print("Audit commands:")
         print("  audit_knowledge          - Full knowledge base audit")
+        print("  rebuild_knowledge_index  - Rebuild index from actual files (fixes orphaned/unindexed)")
         print("  find_similar_facts <txt> - Find facts similar to text (dupe-check)")
         print("")
         print("Meta commands:")
@@ -2327,6 +2560,10 @@ read -p "Press Enter to close..."
     # Audit commands
     elif command == 'audit_knowledge':
         print(audit_knowledge())
+
+    elif command == 'rebuild_knowledge_index':
+        result = rebuild_knowledge_index()
+        print(json.dumps(result, indent=2))
 
     elif command == 'find_similar_facts':
         if len(sys.argv) < 3:
