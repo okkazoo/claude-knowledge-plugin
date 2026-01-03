@@ -783,7 +783,7 @@ def get_knowledge_status() -> str:
     # Stats
     lines.append("STATS")
     lines.append(dotted_line)
-    lines.append(f"{GREEN}Journeys: {journey_count}{RESET}  |  {BLUE}Facts: {facts_count}{RESET}  |  Savepoints: {savepoint_count}")
+    lines.append(f"{BLUE}Facts: {facts_count}{RESET}  |  {GREEN}Journeys: {journey_count}{RESET}  |  Savepoints: {savepoint_count}")
     lines.append("")
     lines.append("")
 
@@ -953,7 +953,7 @@ def get_knowledge_header() -> str:
         "",
         "STATS",
         dotted_line,
-        f"{GREEN}Journeys: {journey_count}{RESET}  |  {BLUE}Facts: {facts_count}{RESET}  |  Savepoints: {savepoint_count}"
+        f"{BLUE}Facts: {facts_count}{RESET}  |  {GREEN}Journeys: {journey_count}{RESET}  |  Savepoints: {savepoint_count}"
     ]
     return '\n'.join(lines)
 
