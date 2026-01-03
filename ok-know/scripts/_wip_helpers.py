@@ -1008,22 +1008,9 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
             lines.append("  _None_")
         lines.append("")
 
-        # Project files reset
-        lines.append("### 📄 Project Files (from templates)")
-        templates_dir = Path('.claude/templates')
-        if (templates_dir / 'CLAUDE.md.template').exists():
-            lines.append("  • CLAUDE.md → template default")
-        if (templates_dir / 'README.md.template').exists():
-            lines.append("  • README.md → template default")
-        if (templates_dir / 'QUICK-REFERENCE.md.template').exists():
-            lines.append("  • QUICK-REFERENCE.md → template default")
-        if (templates_dir / 'settings.json.template').exists():
-            lines.append("  • settings.json → template default")
-        lines.append("")
-
         lines.append("─" * 50)
         lines.append("")
-        lines.append(f"**Total items:** {total_items} (+ project files)")
+        lines.append(f"**Total items:** {total_items}")
         lines.append("")
         lines.append("─" * 50)
         lines.append("")
@@ -1133,33 +1120,6 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
             "files": {}
         }
         knowledge_json.write_text(json.dumps(knowledge_content, indent=2), encoding='utf-8')
-
-        # Reset project files from templates
-        templates_dir = Path('.claude/templates')
-
-        # CLAUDE.md
-        claude_md_template = templates_dir / 'CLAUDE.md.template'
-        if claude_md_template.exists():
-            shutil.copy2(claude_md_template, Path('CLAUDE.md'))
-            lines.append("✓ Reset CLAUDE.md to template")
-
-        # README.md
-        readme_template = templates_dir / 'README.md.template'
-        if readme_template.exists():
-            shutil.copy2(readme_template, Path('README.md'))
-            lines.append("✓ Reset README.md to template")
-
-        # QUICK-REFERENCE.md
-        quick_ref_template = templates_dir / 'QUICK-REFERENCE.md.template'
-        if quick_ref_template.exists():
-            shutil.copy2(quick_ref_template, Path('.claude/QUICK-REFERENCE.md'))
-            lines.append("✓ Reset QUICK-REFERENCE.md to template")
-
-        # settings.json
-        settings_template = templates_dir / 'settings.json.template'
-        if settings_template.exists():
-            shutil.copy2(settings_template, Path('.claude/settings.json'))
-            lines.append("✓ Reset settings.json to template")
 
         lines.append("✓ Reset coderef.json")
         lines.append("✓ Reset knowledge.json")
