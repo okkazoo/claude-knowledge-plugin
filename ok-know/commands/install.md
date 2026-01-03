@@ -10,15 +10,29 @@ Sets up the `.claude/knowledge/` directory structure for persistent project know
 
 ## Instructions
 
-### 1. Create Directory Structure
+### 1. Check if Already Installed
+
+```bash
+[ -d ".claude/knowledge" ] && echo "EXISTS" || echo "NEW"
+```
+
+**If EXISTS**, respond:
+```
+Knowledge base already installed.
+
+Use /ok-know:knowledge to see status.
+```
+Then stop - do not continue to other steps.
+
+**If NEW**, continue to step 2.
+
+### 2. Create Directory Structure
 
 ```bash
 mkdir -p .claude/knowledge/journey .claude/knowledge/facts .claude/knowledge/patterns .claude/knowledge/savepoints
 ```
 
-### 2. Create Index Files (if missing)
-
-**Only create if they don't exist** - never overwrite existing knowledge:
+### 3. Create Index Files
 
 ```bash
 [ -f ".claude/knowledge/knowledge.json" ] && echo "knowledge.json exists" || echo "creating knowledge.json"
@@ -44,7 +58,7 @@ If `.claude/knowledge/coderef.json` does NOT exist, create it:
 }
 ```
 
-### 3. Confirm
+### 4. Confirm
 
 ```
 Knowledge base installed!
