@@ -1,12 +1,12 @@
 ---
 name: install
-description: Install knowledge base structure and CLAUDE.md in current project
-allowed-tools: Bash, Write, Read
+description: Install knowledge base structure in current project
+allowed-tools: Bash, Write
 ---
 
 # Install Knowledge Base
 
-Sets up the `.claude/knowledge/` directory structure and CLAUDE.md for persistent project knowledge.
+Sets up the `.claude/knowledge/` directory structure for persistent project knowledge.
 
 ## Instructions
 
@@ -44,173 +44,21 @@ If `.claude/knowledge/coderef.json` does NOT exist, create it:
 }
 ```
 
-### 3. Create or Augment CLAUDE.md
-
-**Check if CLAUDE.md exists:**
-```bash
-[ -f "CLAUDE.md" ] && echo "exists" || echo "missing"
-```
-
-**If CLAUDE.md does NOT exist**, create it with this template:
-
-```markdown
-# Project: [Project Name]
-
-> **Bootstrap Manifest** - Claude reads this first every session.
-> Keep concise. Details live in .claude/knowledge/ and are loaded on-demand.
-
-## Project Overview
-
-**Purpose:** [Brief description of what this project does]
-
-**Stack:** [Your tech stack]
-
-**Status:** [Development stage]
-
-## Quick Reference
-
-| Area | Location | Notes |
-|------|----------|-------|
-| Source | `/src/` | Main application code |
-| Tests | `/tests/` | Test suite |
-| Config | `.env` | Never commit secrets |
-
-## Available Tools
-
-### Built-in Agents (via Task tool)
-
-| Agent | Use When |
-|-------|----------|
-| `Explore` | Codebase exploration, finding patterns, "how does X work?" |
-| `Plan` | Implementation planning, architecture design |
-| `feature-dev:code-architect` | Feature architecture, design decisions |
-| `feature-dev:code-explorer` | Tracing execution paths, mapping dependencies |
-| `feature-dev:code-reviewer` | Code review, finding bugs/issues |
-| `general-purpose` | Multi-step tasks with full tool access |
-
-### Skills (Auto-invoked)
-
-| Skill | Triggers When |
-|-------|---------------|
-| `context-manager` | Large files or outputs detected |
-| `code-patterns` | Writing new code |
-| `knowledge-search` | Looking for project-specific patterns/solutions |
-
-### Hooks (Automatic)
-
-| Hook | Triggers |
-|------|----------|
-| `session-start` | On startup - injects git status, knowledge stats |
-| `pre-search` | Before Grep/Glob - shows patterns first |
-| `pre-read` | Before Read - warns on large files |
-| `auto-index` | After Edit/Write - updates indexes |
-
-### Commands (User-triggered)
-
-| Command | Purpose |
-|---------|---------|
-| `/ok-know:wip` | Save work-in-progress with auto-extracted patterns |
-| `/ok-know:wip -f <text>` | Save a fact/gotcha directly |
-| `/ok-know:save [desc]` | Save state before risky changes |
-| `/ok-know:knowledge` | Show knowledge base status |
-
-## Knowledge Base
-
-**CRITICAL: Pre-search hook shows patterns BEFORE you try solutions.**
-
-When you Grep/Glob, the hook automatically shows:
-1. **PATTERNS** - Solutions, tried-failed, gotchas (check these FIRST!)
-2. Code refs - Function/class locations
-3. Knowledge - Journeys and facts
-
-### Pattern Types
-
-| Type | Meaning |
-|------|---------|
-| solution | What worked - USE THIS |
-| tried-failed | What didn't work - DON'T REPEAT |
-| gotcha | Trap to avoid |
-| best-practice | Recommended approach |
-
-### Workflow
-
-1. **Before trying anything** - Search for related patterns
-2. **Check tried-failed** - Don't repeat documented failures
-3. **Use solutions** - Apply what already worked
-4. **After solving** - `/ok-know:wip` captures patterns automatically
-
-## Project-Specific Notes
-
-### Development Environment
-```bash
-# Add your setup instructions here
-```
-
-### Architecture Principles
-[Document your key architecture decisions]
-
-### Known Gotchas
-[Document common pitfalls]
-
----
-*Initialized with ok-know plugin*
-```
-
-**If CLAUDE.md already exists**, check if it has a Knowledge Base section:
-
-```bash
-grep -q "Knowledge Base" CLAUDE.md && echo "has-kb" || echo "no-kb"
-```
-
-If no Knowledge Base section, append this to the existing CLAUDE.md:
-
-```markdown
-
----
-
-## Knowledge Base (ok-know plugin)
-
-Project uses the `ok-know` knowledge management plugin.
-
-### Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/ok-know:wip` | Save work-in-progress with auto-extracted patterns |
-| `/ok-know:wip -f <text>` | Save a fact/gotcha directly |
-| `/ok-know:save [desc]` | Save state before risky changes |
-| `/ok-know:knowledge` | Show knowledge base status |
-
-### Hooks
-
-- `pre-search` shows relevant patterns before Grep/Glob searches
-- `session-start` injects context on startup
-- `auto-index` updates indexes after file changes
-
-### Pattern Workflow
-
-1. Before trying anything - search for related patterns
-2. Check tried-failed patterns - don't repeat failures
-3. Use documented solutions
-4. After solving - `/ok-know:wip` captures patterns
-```
-
-### 4. Confirm
+### 3. Confirm
 
 ```
-Knowledge base initialized!
+Knowledge base installed!
 
-Structure created:
+Structure:
   .claude/knowledge/
   ├── journey/      (work-in-progress entries)
   ├── facts/        (quick facts, gotchas)
   ├── patterns/     (extracted solutions)
   └── savepoints/   (state snapshots)
 
-CLAUDE.md: [created/augmented/unchanged]
-
-Next steps:
-  1. Review and customize CLAUDE.md for your project
-  2. Use /ok-know:wip to save progress as you work
-  3. Use /ok-know:save before risky changes
+Commands:
+  /ok-know:wip          Save work-in-progress
+  /ok-know:wip -f       Save a fact directly
+  /ok-know:save         Create restore point
+  /ok-know:knowledge    Show status
 ```

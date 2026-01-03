@@ -33,7 +33,7 @@ claude --plugin-dir /path/to/claude-knowledge-plugin
 /plugins install /path/to/claude-knowledge-plugin
 ```
 
-**Important:** The plugin must be installed before running `/ok-know:install`. The init command reads from Claude's plugin registry (`~/.claude/plugins/installed_plugins.json`) to locate the helper scripts.
+**Important:** The plugin must be installed before running `/ok-know:install`.
 
 ## Commands
 
@@ -44,7 +44,6 @@ claude --plugin-dir /path/to/claude-knowledge-plugin
 | `/ok-know:wip -f <text>` | Save a fact directly |
 | `/ok-know:save [desc]` | Create restore point before risky changes |
 | `/ok-know:knowledge` | Show knowledge base status |
-| `/ok-know:setup` | Bootstrap CLAUDE.md for new projects |
 
 ## Hooks
 
