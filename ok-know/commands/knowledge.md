@@ -55,20 +55,31 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" reset_knowledge
 ---
 
 **Otherwise (no argument):**
+
+Run these commands separately (not chained) so output displays in parts:
+
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_status
+python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_header
+```
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_facts
+```
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_journeys
+```
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" knowledge_patterns
 ```
 
 ## CRITICAL OUTPUT RULES
 
-After running the command above:
-1. Display the command output EXACTLY as it appears
-2. **STOP** - Do NOT add any text after the output
-3. Do NOT summarize what you see
-4. Do NOT offer suggestions or next steps
-5. Do NOT interpret the data
-
-Your entire response after the bash command should be empty. The command output IS the response.
+After running these commands:
+1. Display each command's output EXACTLY as it appears
+2. **STOP** - Do NOT add any text after the outputs
+3. Do NOT summarize, interpret, or add commentary
 
 ---
 

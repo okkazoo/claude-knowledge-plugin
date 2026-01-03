@@ -912,6 +912,181 @@ def get_knowledge_status() -> str:
     return '\n'.join(lines)
 
 
+def get_knowledge_header() -> str:
+    """Get just the header section (title, branch, stats)."""
+    dotted_line = '·' * 34
+
+    # Git info
+    git_dir = Path('.git')
+    if git_dir.exists():
+        try:
+            branch = subprocess.run(['git', 'branch', '--show-current'],
+                                   capture_output=True, text=True, timeout=5).stdout.strip()
+            git_info = branch or 'unknown'
+        except:
+            git_info = 'unknown'
+    else:
+        git_info = 'not a git repo'
+
+    # Counts
+    journey_dir = Path('.claude/knowledge/journey')
+    journey_count = 0
+    if journey_dir.exists():
+        for category in journey_dir.iterdir():
+            if category.is_dir() and not category.name.startswith(('_', '.')):
+                for journey in category.iterdir():
+                    if journey.is_dir() and not journey.name.startswith(('_', '.')):
+                        journey_count += 1
+
+    facts_dir = Path('.claude/knowledge/facts')
+    facts_count = len([f for f in facts_dir.glob('*.md') if not f.name.startswith('.')]) if facts_dir.exists() else 0
+
+    savepoints_dir = Path('.claude/knowledge/savepoints')
+    savepoint_count = len([d for d in savepoints_dir.iterdir() if d.is_dir()]) if savepoints_dir.exists() else 0
+
+    lines = [
+        "Knowledge Base Status",
+        "",
+        f"Branch: {git_info}",
+        "",
+        "STATS",
+        dotted_line,
+        f"{GREEN}Journeys: {journey_count}{RESET}  |  {BLUE}Facts: {facts_count}{RESET}  |  Savepoints: {savepoint_count}"
+    ]
+    return '\n'.join(lines)
+
+
+def get_knowledge_facts() -> str:
+    """Get just the facts section."""
+    dotted_line = '·' * 34
+    facts_dir = Path('.claude/knowledge/facts')
+
+    lines = []
+    if facts_dir.exists():
+        all_facts = sorted([f.name for f in facts_dir.glob('*.md') if not f.name.startswith('.')], reverse=True)
+        facts_count = len(all_facts)
+
+        lines.append(f"{BLUE}FACTS [{facts_count}]{RESET}")
+        lines.append(f"{BLUE}{dotted_line}{RESET}")
+
+        if all_facts:
+            for fact_name in all_facts:
+                display_name = fact_name[:-3] if fact_name.endswith('.md') else fact_name
+                lines.append(display_name)
+        else:
+            lines.append("No facts yet.")
+    else:
+        lines.append(f"{BLUE}FACTS [0]{RESET}")
+        lines.append(f"{BLUE}{dotted_line}{RESET}")
+        lines.append("No facts yet.")
+
+    return '\n'.join(lines)
+
+
+def get_knowledge_journeys() -> str:
+    """Get just the journeys section."""
+    dotted_line = '·' * 34
+    journey_dir = Path('.claude/knowledge/journey')
+
+    lines = []
+    journey_count = 0
+    journeys_detail = []
+
+    if journey_dir.exists():
+        for category in journey_dir.iterdir():
+            if category.is_dir() and category.name not in ('memory', '_', '.') and not category.name.startswith(('_', '.')):
+                category_journeys = []
+                for journey in category.iterdir():
+                    if journey.is_dir() and not journey.name.startswith(('_', '.')):
+                        journey_count += 1
+                        category_journeys.append({'name': journey.name})
+
+                if category_journeys:
+                    category_journeys.sort(key=lambda x: x['name'], reverse=True)
+                    journeys_detail.append({
+                        'category': category.name,
+                        'journeys': category_journeys
+                    })
+
+    lines.append(f"{GREEN}JOURNEYS [{journey_count}]{RESET}")
+    lines.append(f"{GREEN}{dotted_line}{RESET}")
+
+    if journeys_detail:
+        for cat_idx, cat in enumerate(journeys_detail):
+            lines.append(cat['category'])
+            lines.append("│")
+
+            journeys = cat['journeys']
+            for j_idx, j in enumerate(journeys):
+                is_last_journey = (j_idx == len(journeys) - 1)
+                journey_prefix = "└── " if is_last_journey else "├── "
+                lines.append(f"{journey_prefix}{j['name']}")
+
+                journey_path = Path(f".claude/knowledge/journey/{cat['category']}/{j['name']}")
+                if journey_path.exists():
+                    entry_files = sorted(
+                        [f.name for f in journey_path.glob('*.md') if f.name != '_meta.md'],
+                        reverse=True
+                    )
+                    entry_indent = "        "
+                    for entry_name in entry_files:
+                        display_name = entry_name[:-3] if entry_name.endswith('.md') else entry_name
+                        lines.append(f"{entry_indent}{display_name}")
+
+                if not is_last_journey:
+                    lines.append("│")
+
+            if cat_idx < len(journeys_detail) - 1:
+                lines.append("")
+    else:
+        lines.append("No journeys yet.")
+
+    return '\n'.join(lines)
+
+
+def get_knowledge_patterns() -> str:
+    """Get just the patterns section."""
+    dotted_line = '·' * 34
+    lines = []
+
+    lines.append("PATTERNS")
+    lines.append(dotted_line)
+
+    knowledge_json_path = Path('.claude/knowledge/knowledge.json')
+    if knowledge_json_path.exists():
+        try:
+            kdata = json.loads(knowledge_json_path.read_text(encoding='utf-8'))
+            patterns = kdata.get('patterns', [])
+            if patterns:
+                by_source = {}
+                for p in patterns:
+                    source = p.get('source', 'unknown')
+                    parts = source.replace('\\', '/').split('/')
+                    if len(parts) >= 2:
+                        source_name = parts[1] + '/'
+                    else:
+                        source_name = parts[0] + '/' if parts else 'unknown/'
+
+                    if source_name not in by_source:
+                        by_source[source_name] = {'count': 0, 'keywords': []}
+                    by_source[source_name]['count'] += 1
+                    keywords = p.get('context', '').split(',')
+                    by_source[source_name]['keywords'].extend([k.strip() for k in keywords if k.strip()])
+
+                lines.append(f"{len(patterns)} patterns from {len(by_source)} sources:")
+                for source, data in sorted(by_source.items()):
+                    unique_kw = list(set(data['keywords']))[:5]
+                    lines.append(f"  {source} ({data['count']}) - {', '.join(unique_kw)}")
+            else:
+                lines.append("No patterns indexed yet.")
+        except:
+            lines.append("Error reading patterns.")
+    else:
+        lines.append("No patterns indexed yet.")
+
+    return '\n'.join(lines)
+
+
 def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
     """
     Reset knowledge base to factory defaults.
@@ -1983,6 +2158,18 @@ if __name__ == '__main__':
 
     elif command == 'knowledge_status':
         print(get_knowledge_status())
+
+    elif command == 'knowledge_header':
+        print(get_knowledge_header())
+
+    elif command == 'knowledge_facts':
+        print(get_knowledge_facts())
+
+    elif command == 'knowledge_journeys':
+        print(get_knowledge_journeys())
+
+    elif command == 'knowledge_patterns':
+        print(get_knowledge_patterns())
 
     elif command == 'reset_knowledge':
         if '-archive' in sys.argv:
