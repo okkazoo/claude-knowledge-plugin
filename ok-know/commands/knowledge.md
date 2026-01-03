@@ -2,7 +2,7 @@
 name: knowledge
 description: Show knowledge base status, recent entries, and project state.
 allowed-tools: Bash, AskUserQuestion
-argument-hint: [-audit|-reset]
+argument-hint: -audit  -reset
 model: sonnet
 ---
 
