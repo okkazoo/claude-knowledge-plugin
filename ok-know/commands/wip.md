@@ -100,8 +100,12 @@ wip                  Autonomous mode - analyzes FULL conversation context
 
 4. **Confirm to user** (use blue for facts):
    ```
-   \033[94mSaved to facts/YYYY-MM-DD-<slug>.md\033[0m
+   FACTS
+   ··································
+   [F1] <fact text preview>
+        → facts/YYYY-MM-DD-<slug>.md
    ```
+   Apply blue color to "FACTS", dotted line, and "[F1]" prefix.
 
 ---
 
@@ -283,26 +287,40 @@ For each journey topic selected:
 
 ### Step 5: Show Summary
 
-After saving all selected items, use color coding:
-- **Facts**: Blue (`\033[94m`)
-- **Journeys**: Green (`\033[92m`)
-- Reset: `\033[0m`
+After saving, display with consistent color coding:
+- **Facts**: Blue - header, dotted line, [F#] prefix
+- **Journeys**: Green - header, dotted line, [J#] prefix
+- Content text: default/white
 
+ANSI codes: Blue=`\033[94m`, Green=`\033[92m`, Reset=`\033[0m`
+Dotted line: `·` × 34 characters
+
+Example output (print these with actual ANSI codes):
 ```
 Saved:
 
-  \033[94m[F1] Fact: "On Windows use python not python3"
-        → facts/2024-12-21-windows-python.md\033[0m
+FACTS
+··································
+[F1] On Windows use python not python3
+     → facts/2024-12-21-windows-python.md
 
-  \033[92m[J1] auth-token-refresh
-        → authentication/token-refresh/2024-12-21-15-30-oauth-cookies.md
-        Key learnings: JWT failed (CORS), HTTP-only cookies work\033[0m
+JOURNEYS
+··································
+[J1] auth-token-refresh
+     → authentication/token-refresh/2024-12-21-15-30-oauth-cookies.md
+     Key learnings: JWT failed (CORS), HTTP-only cookies work
 
-  \033[92m[J2] database-migration
-        → infrastructure/database-migration/2024-12-21-15-30-user-prefs.md\033[0m
+[J2] database-migration
+     → infrastructure/database-migration/2024-12-21-15-30-user-prefs.md
 
-Total: \033[94m1 fact\033[0m, \033[92m2 journeys\033[0m saved
+Total: 1 fact, 2 journeys saved
 ```
+
+Apply colors:
+- "FACTS" and its dotted line: blue
+- "[F#]" prefix: blue, rest of line: default
+- "JOURNEYS" and its dotted line: green
+- "[J#]" prefix: green, rest of line: default
 
 ---
 

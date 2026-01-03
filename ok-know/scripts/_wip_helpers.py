@@ -767,61 +767,42 @@ def get_knowledge_status() -> str:
     lines = []
     dotted_line = '·' * 34
 
-    lines.append("# Knowledge Base Status")
+    lines.append("Knowledge Base Status")
     lines.append("")
-    lines.append(f"**Branch:** {git_info}")
+    lines.append(f"Branch: {git_info}")
     lines.append("")
 
-    # Stats (no icons)
-    lines.append("Stats")
+    # Stats
+    lines.append("STATS")
     lines.append(dotted_line)
     lines.append(f"{GREEN}Journeys: {journey_count}{RESET}  |  {BLUE}Facts: {facts_count}{RESET}  |  Savepoints: {savepoint_count}")
     lines.append("")
     lines.append("")
 
-    # Facts first (flat list, no icons) - BLUE
+    # Facts - BLUE header and dotted line
     lines.append(f"{BLUE}FACTS{RESET}")
-    lines.append(dotted_line)
+    lines.append(f"{BLUE}{dotted_line}{RESET}")
     if facts_detail:
-        # Get all fact files for flat list
         facts_dir_path = Path('.claude/knowledge/facts')
         if facts_dir_path.exists():
             all_facts = sorted([f.name for f in facts_dir_path.glob('*.md') if not f.name.startswith('.')], reverse=True)
-            for fact_name in all_facts:
-                lines.append(f"{BLUE}{fact_name}{RESET}")
+            for idx, fact_name in enumerate(all_facts, 1):
+                lines.append(f"{BLUE}[F{idx}]{RESET} {fact_name}")
     else:
         lines.append("No facts yet.")
     lines.append("")
     lines.append("")
 
-    # Journeys (tree structure, no icons, no _meta.md) - GREEN
+    # Journeys - GREEN header and dotted line
     lines.append(f"{GREEN}JOURNEYS{RESET}")
-    lines.append(dotted_line)
+    lines.append(f"{GREEN}{dotted_line}{RESET}")
     if journeys_detail:
-        for cat_idx, cat in enumerate(journeys_detail):
-            lines.append(f"{GREEN}{cat['category']}/{RESET}")
-            journeys_in_cat = cat['journeys']
-            for j_idx, j in enumerate(journeys_in_cat):
-                is_last_journey = (j_idx == len(journeys_in_cat) - 1)
-                j_prefix = "└── " if is_last_journey else "├── "
-                lines.append(f"{GREEN}{j_prefix}{j['name']}/{RESET}")
-
-                # Get entry files for this journey (exclude _meta.md)
-                journey_path = Path(f".claude/knowledge/journey/{cat['category']}/{j['name']}")
-                if journey_path.exists():
-                    entry_files = sorted([f.name for f in journey_path.glob('*.md') if f.name != '_meta.md'])
-                    for e_idx, entry_name in enumerate(entry_files):
-                        is_last_entry = (e_idx == len(entry_files) - 1)
-                        if is_last_journey:
-                            e_indent = "    "
-                        else:
-                            e_indent = "│   "
-                        e_prefix = "└── " if is_last_entry else "├── "
-                        lines.append(f"{GREEN}{e_indent}{e_prefix}{entry_name}{RESET}")
-
-            # Add blank line between categories (except last)
-            if cat_idx < len(journeys_detail) - 1:
-                lines.append("")
+        j_num = 1
+        for cat in journeys_detail:
+            for j in cat['journeys']:
+                journey_name = f"{cat['category']}/{j['name']}"
+                lines.append(f"{GREEN}[J{j_num}]{RESET} {journey_name}")
+                j_num += 1
     else:
         lines.append("No journeys yet.")
     lines.append("")
