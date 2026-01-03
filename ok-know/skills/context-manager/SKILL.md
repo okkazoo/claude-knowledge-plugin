@@ -2,6 +2,7 @@
 name: context-manager
 description: Handle large files and outputs efficiently. Summarizes data before it enters main context. Use when dealing with log files, large API responses, or bulk file reading.
 allowed-tools: Read, Bash
+model: sonnet
 ---
 
 # Context Manager (Efficient Large Data Handling)

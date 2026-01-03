@@ -3,6 +3,7 @@ name: knowledge
 description: Show knowledge base status, recent entries, and project state.
 allowed-tools: Bash, AskUserQuestion
 argument-hint: -reset
+model: haiku
 ---
 
 # Knowledge Base Status

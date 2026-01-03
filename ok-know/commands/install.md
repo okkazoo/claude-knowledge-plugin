@@ -2,6 +2,7 @@
 name: install
 description: Install knowledge base structure in current project
 allowed-tools: Bash, Write
+model: haiku
 ---
 
 # Install Knowledge Base

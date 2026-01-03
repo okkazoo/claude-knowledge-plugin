@@ -2,6 +2,7 @@
 name: code-patterns
 description: Project coding conventions and patterns with examples. Use when writing new code to follow project standards. Contains examples for API endpoints, components, error handling, and testing.
 allowed-tools: Read
+model: haiku
 ---
 
 # Project Code Patterns

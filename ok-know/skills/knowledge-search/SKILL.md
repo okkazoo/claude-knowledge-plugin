@@ -2,6 +2,7 @@
 name: knowledge-search
 description: Search project knowledge base for journeys, memory (facts/learnings), patterns, and anti-patterns. Use when you need project-specific context about how things work, why decisions were made, or what not to do.
 allowed-tools: Read, Grep, Bash
+model: haiku
 ---
 
 # Knowledge Search
