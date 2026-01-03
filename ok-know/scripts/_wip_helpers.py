@@ -22,6 +22,12 @@ BLUE = '\033[94m'
 GREEN = '\033[92m'
 RESET = '\033[0m'
 
+# ASCII characters for tree drawing (works on all terminals)
+DOTTED_LINE = '-' * 34
+TREE_PIPE = '|'
+TREE_BRANCH = '+--'
+TREE_LAST = '+--'
+
 
 # ============================================================================
 # AUTONOMOUS .WIP HELPERS
@@ -767,7 +773,7 @@ def get_knowledge_status() -> str:
 
     # Build output
     lines = []
-    dotted_line = '·' * 34
+    dotted_line = DOTTED_LINE
 
     lines.append("Knowledge Base Status")
     lines.append("")
@@ -804,12 +810,12 @@ def get_knowledge_status() -> str:
         for cat_idx, cat in enumerate(journeys_detail):
             # Category header (no trailing slash)
             lines.append(cat['category'])
-            lines.append("│")
+            lines.append(TREE_PIPE)
 
             journeys = cat['journeys']
             for j_idx, j in enumerate(journeys):
                 is_last_journey = (j_idx == len(journeys) - 1)
-                journey_prefix = "└── " if is_last_journey else "├── "
+                journey_prefix = TREE_LAST + " " if is_last_journey else TREE_BRANCH + " "
 
                 # Journey topic name (no trailing slash)
                 lines.append(f"{journey_prefix}{j['name']}")
@@ -828,9 +834,9 @@ def get_knowledge_status() -> str:
                         display_name = entry_name[:-3] if entry_name.endswith('.md') else entry_name
                         lines.append(f"{entry_indent}{display_name}")
 
-                # Add blank line with │ after each topic (except last in category)
+                # Add blank line with pipe after each topic (except last in category)
                 if not is_last_journey:
-                    lines.append("│")
+                    lines.append(TREE_PIPE)
 
             # Blank line between categories (except last)
             if cat_idx < len(journeys_detail) - 1:
@@ -916,7 +922,7 @@ def get_knowledge_status() -> str:
 
 def get_knowledge_header() -> str:
     """Get just the header section (title, branch, stats)."""
-    dotted_line = '·' * 34
+    dotted_line = DOTTED_LINE
 
     # Git info
     git_dir = Path('.git')
@@ -960,7 +966,7 @@ def get_knowledge_header() -> str:
 
 def get_knowledge_facts() -> str:
     """Get just the facts section."""
-    dotted_line = '·' * 34
+    dotted_line = DOTTED_LINE
     facts_dir = Path('.claude/knowledge/facts')
 
     lines = []
@@ -987,7 +993,7 @@ def get_knowledge_facts() -> str:
 
 def get_knowledge_journeys() -> str:
     """Get just the journeys section."""
-    dotted_line = '·' * 34
+    dotted_line = DOTTED_LINE
     journey_dir = Path('.claude/knowledge/journey')
 
     lines = []
@@ -1016,12 +1022,12 @@ def get_knowledge_journeys() -> str:
     if journeys_detail:
         for cat_idx, cat in enumerate(journeys_detail):
             lines.append(cat['category'])
-            lines.append("│")
+            lines.append(TREE_PIPE)
 
             journeys = cat['journeys']
             for j_idx, j in enumerate(journeys):
                 is_last_journey = (j_idx == len(journeys) - 1)
-                journey_prefix = "└── " if is_last_journey else "├── "
+                journey_prefix = TREE_LAST + " " if is_last_journey else TREE_BRANCH + " "
                 lines.append(f"{journey_prefix}{j['name']}")
 
                 journey_path = Path(f".claude/knowledge/journey/{cat['category']}/{j['name']}")
@@ -1036,7 +1042,7 @@ def get_knowledge_journeys() -> str:
                         lines.append(f"{entry_indent}{display_name}")
 
                 if not is_last_journey:
-                    lines.append("│")
+                    lines.append(TREE_PIPE)
 
             if cat_idx < len(journeys_detail) - 1:
                 lines.append("")
@@ -1048,7 +1054,7 @@ def get_knowledge_journeys() -> str:
 
 def get_knowledge_patterns() -> str:
     """Get just the patterns section."""
-    dotted_line = '·' * 34
+    dotted_line = DOTTED_LINE
     lines = []
 
     lines.append("PATTERNS")
@@ -1150,7 +1156,7 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
         # Show what will be affected
         lines.append("# Knowledge Base Reset")
         lines.append("")
-        lines.append("─" * 50)
+        lines.append("-" * 50)
         lines.append("")
         lines.append("## ⚠️  Items to be Reset")
         lines.append("")
@@ -1158,7 +1164,7 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
         if total_items == 0:
             lines.append("  _Knowledge base is already empty._")
             lines.append("")
-            lines.append("─" * 50)
+            lines.append("-" * 50)
             lines.append("")
             lines.append("Nothing to reset.")
             return '\n'.join(lines)
@@ -1196,11 +1202,11 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
             lines.append("  _None_")
         lines.append("")
 
-        lines.append("─" * 50)
+        lines.append("-" * 50)
         lines.append("")
         lines.append(f"**Total items:** {total_items}")
         lines.append("")
-        lines.append("─" * 50)
+        lines.append("-" * 50)
         lines.append("")
         lines.append("## Choose Reset Option")
         lines.append("")
@@ -1315,7 +1321,7 @@ def reset_knowledge(archive: bool = False, dry_run: bool = True) -> str:
         lines.append("✓ Cleared facts")
         lines.append("✓ Cleared savepoints")
         lines.append("")
-        lines.append("─" * 50)
+        lines.append("-" * 50)
         lines.append("")
         lines.append("✅ **Knowledge base reset to factory defaults.**")
 
