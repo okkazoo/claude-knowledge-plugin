@@ -1543,6 +1543,38 @@ def create_entry(category: str, topic: str, content: str, slug: Optional[str] = 
     if patterns:
         patterns_count = save_patterns_to_knowledge(patterns, str(file_path))
 
+    # Also add entry to knowledge.json files section
+    try:
+        knowledge_json_path = Path('.claude/knowledge/knowledge.json')
+        if knowledge_json_path.exists():
+            kdata = json.loads(knowledge_json_path.read_text(encoding='utf-8'))
+        else:
+            kdata = {'version': 1, 'updated': None, 'files': {}, 'patterns': []}
+
+        # Build relative path for the entry
+        rel_path = f"journey/{category}/{topic}/{file_path.name}"
+
+        # Extract title from content
+        title = file_path.stem
+        for line in content.split('\n'):
+            if line.startswith('# '):
+                title = line[2:].strip()[:80]
+                break
+
+        # Add to files section with keywords
+        kdata['files'][rel_path] = {
+            'title': title,
+            'category': category,
+            'date': now.strftime('%Y-%m-%d'),
+            'status': 'in_progress',
+            'keywords': sorted(list(entry_keywords))[:20]
+        }
+        kdata['updated'] = datetime.now().isoformat()
+
+        knowledge_json_path.write_text(json.dumps(kdata, indent=2), encoding='utf-8')
+    except Exception:
+        pass  # Don't fail the entry creation if indexing fails
+
     return {
         'success': True,
         'file': str(file_path),
@@ -1737,30 +1769,86 @@ def rebuild_knowledge_index() -> Dict:
         rel_path = file_info['rel_path']
         full_path = knowledge_dir / rel_path
 
-        # Add to files index
+        # Extract patterns and keywords from content
+        keywords = set()
+        try:
+            content = full_path.read_text(encoding='utf-8')
+
+            # Extract patterns
+            patterns = extract_patterns_from_content(content)
+            for p in patterns:
+                # Skip placeholder patterns
+                pattern_text = p.get('pattern', '')
+                if pattern_text in ['[Pattern that worked]', '[What didn\'t work] - [reason]',
+                                   '[Unexpected issue discovered]', '[Practice to follow]']:
+                    continue
+
+                context_list = [k.strip() for k in p.get('context', '').split(',') if k.strip()]
+                # Skip placeholder contexts
+                if context_list == ['keyword1', 'keyword2'] or context_list == ['keyword1', 'keyword2', 'keyword3']:
+                    continue
+
+                data['patterns'].append({
+                    'type': p.get('type', 'solution'),
+                    'text': pattern_text,
+                    'context': context_list,
+                    'source': rel_path
+                })
+                patterns_indexed += 1
+                # Add pattern context as keywords
+                keywords.update(context_list)
+
+            # Extract keywords from content (title, headings, context lines)
+            stopwords = {'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been',
+                        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+                        'could', 'should', 'may', 'might', 'must', 'to', 'of', 'in',
+                        'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into', 'and',
+                        'or', 'but', 'if', 'then', 'because', 'so', 'this', 'that',
+                        'it', 'its', 'you', 'your', 'use', 'using', 'used', 'wip',
+                        'what', 'tried', 'still', 'todo', 'current', 'state', 'date'}
+
+            # Extract from title and headings
+            for line in content.split('\n'):
+                if line.startswith('#'):
+                    words = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_-]{2,}\b', line.lower())
+                    keywords.update(w for w in words if w not in stopwords)
+                # Also extract from context: lines
+                if 'context:' in line.lower():
+                    match = re.search(r'context:\s*(.+?)(?:\s*$|\s*-)', line, re.IGNORECASE)
+                    if match:
+                        kws = [k.strip().lower() for k in match.group(1).split(',')]
+                        keywords.update(k for k in kws if k and k not in ['keyword1', 'keyword2', 'keyword3'])
+
+            # Add category and topic as keywords
+            keywords.add(file_info['category'].lower())
+            topic_words = file_info.get('topic', '').replace('-', ' ').split()
+            keywords.update(w.lower() for w in topic_words if len(w) > 2)
+
+        except:
+            pass
+
+        # Also check _meta.md for additional keywords
+        try:
+            meta_path = full_path.parent / '_meta.md'
+            if meta_path.exists():
+                meta_content = meta_path.read_text(encoding='utf-8')
+                if 'keywords:' in meta_content.lower():
+                    for line in meta_content.split('\n'):
+                        if line.lower().startswith('keywords:'):
+                            kws = line.split(':', 1)[1].strip()
+                            keywords.update(k.strip().lower() for k in kws.split(',') if k.strip())
+        except:
+            pass
+
+        # Add to files index with keywords
         data['files'][rel_path] = {
             'title': file_info['title'],
             'category': file_info['category'],
             'date': file_info['date'],
-            'status': 'in_progress'  # Default status
+            'status': 'in_progress',
+            'keywords': sorted(list(keywords))[:20]  # Limit to 20 keywords
         }
         files_indexed += 1
-
-        # Extract patterns from content
-        try:
-            content = full_path.read_text(encoding='utf-8')
-            patterns = extract_patterns_from_content(content)
-
-            for p in patterns:
-                data['patterns'].append({
-                    'type': p.get('type', 'solution'),
-                    'text': p.get('pattern', ''),
-                    'context': [k.strip() for k in p.get('context', '').split(',') if k.strip()],
-                    'source': rel_path
-                })
-                patterns_indexed += 1
-        except:
-            pass
 
     # Also index facts
     facts_dir = knowledge_dir / 'facts'
