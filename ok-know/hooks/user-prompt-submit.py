@@ -6,12 +6,14 @@ Extracts keywords from user's prompt and searches knowledge.json for:
 - Matching patterns (solutions, gotchas, tried-failed, best-practices)
 - Relevant journey files and facts
 
-This helps Claude learn from past mistakes and not reinvent the wheel.
+Uses mtime-based caching to avoid re-parsing on every prompt.
 """
 
 import json
 import sys
 import re
+import os
+import pickle
 from pathlib import Path
 
 # Common words to skip when extracting keywords
@@ -29,39 +31,42 @@ STOP_WORDS = {
     'those', 'am', 'it', 'its', 'i', 'me', 'my', 'you', 'your', 'we', 'our',
     'they', 'them', 'their', 'what', 'which', 'who', 'whom', 'any', 'both',
     'let', 'get', 'got', 'make', 'made', 'want', 'please', 'help', 'try',
-    'also', 'like', 'using', 'use', 'used', 'about', 'know', 'think'
+    'also', 'like', 'using', 'use', 'used', 'about', 'know', 'think',
+    'yes', 'yeah', 'okay', 'sure', 'thanks', 'thank', 'hello', 'hey', 'hi'
 }
 
-# Minimum word length to consider
 MIN_WORD_LENGTH = 3
+CACHE_FILENAME = '.knowledge_cache.pkl'
 
 
 def extract_keywords(text):
     """Extract meaningful keywords from user prompt."""
-    # Lowercase and split on non-alphanumeric
     words = re.findall(r'[a-zA-Z0-9_-]+', text.lower())
-
-    # Filter out stop words and short words
     keywords = set()
     for word in words:
         if len(word) >= MIN_WORD_LENGTH and word not in STOP_WORDS:
             keywords.add(word)
-
     return keywords
 
 
-def search_patterns(keywords, patterns):
-    """Search patterns for keyword matches."""
-    matches = []
+def build_search_index(data):
+    """
+    Build optimized search index from knowledge.json data.
+
+    Returns:
+        dict with 'patterns' and 'files' pre-processed for fast search
+    """
     type_icons = {
         'solution': '[OK]',
         'tried-failed': '[X]',
         'gotcha': '[!]',
         'best-practice': '[*]'
     }
+    type_priority = {'gotcha': 0, 'tried-failed': 1, 'best-practice': 2, 'solution': 3}
 
-    for p in patterns:
-        # Get pattern text and context
+    # Pre-process patterns
+    patterns_index = []
+    for p in data.get('patterns', []):
         pattern_text = p.get('pattern', p.get('text', '')).lower()
         context = p.get('context', [])
         if isinstance(context, str):
@@ -69,53 +74,131 @@ def search_patterns(keywords, patterns):
         else:
             context = [c.lower() for c in context]
 
-        # Combine all searchable text
-        all_text = set(pattern_text.split()) | set(context)
+        # Pre-compute searchable words
+        all_words = set(pattern_text.split()) | set(context)
 
-        # Count keyword overlap
-        overlap = len(keywords & all_text)
+        ptype = p.get('type', 'other')
+        icon = type_icons.get(ptype, '*')
+        display_text = p.get('pattern', p.get('text', ''))[:100]
 
-        # Also check for substring matches in pattern text
-        for kw in keywords:
-            if kw in pattern_text:
-                overlap += 1
+        patterns_index.append({
+            'words': all_words,
+            'text': pattern_text,
+            'type': ptype,
+            'priority': type_priority.get(ptype, 4),
+            'display': f"  {icon} {display_text}"
+        })
 
-        if overlap >= 2:  # Require at least 2 keyword matches
-            ptype = p.get('type', 'other')
-            icon = type_icons.get(ptype, '*')
-            display_text = p.get('pattern', p.get('text', ''))[:100]
-            matches.append((overlap, ptype, f"  {icon} {display_text}"))
-
-    # Sort by overlap score, then by type priority
-    type_priority = {'gotcha': 0, 'tried-failed': 1, 'best-practice': 2, 'solution': 3}
-    matches.sort(key=lambda x: (-x[0], type_priority.get(x[1], 4)))
-
-    return [m[2] for m in matches[:5]]
-
-
-def search_files(keywords, files):
-    """Search files index for keyword matches."""
-    matches = []
-
-    for filepath, info in files.items():
+    # Pre-process files
+    files_index = []
+    for filepath, info in data.get('files', {}).items():
         title = info.get('title', filepath).lower()
         file_keywords = [kw.lower() for kw in info.get('keywords', [])]
         category = info.get('category', '').lower()
 
-        # Combine searchable text
-        all_text = set(title.split()) | set(file_keywords) | {category}
+        # Pre-compute searchable words
+        all_words = set(title.split()) | set(file_keywords) | {category}
 
-        # Count keyword overlap
-        overlap = len(keywords & all_text)
+        display_title = info.get('title', filepath)[:60]
+
+        files_index.append({
+            'words': all_words,
+            'title': title,
+            'display': f"  - {display_title}"
+        })
+
+    return {
+        'patterns': patterns_index,
+        'files': files_index
+    }
+
+
+def get_cached_index(knowledge_json_path):
+    """
+    Get search index, using cache if knowledge.json hasn't changed.
+
+    Returns:
+        tuple: (patterns_index, files_index) or (None, None) if no data
+    """
+    cache_path = knowledge_json_path.parent / CACHE_FILENAME
+
+    try:
+        knowledge_mtime = knowledge_json_path.stat().st_mtime
+    except OSError:
+        return None, None
+
+    # Try to load from cache
+    if cache_path.exists():
+        try:
+            cache_mtime = cache_path.stat().st_mtime
+            # Cache is valid if it's newer than knowledge.json
+            if cache_mtime >= knowledge_mtime:
+                with open(cache_path, 'rb') as f:
+                    cached = pickle.load(f)
+                    if cached.get('mtime') == knowledge_mtime:
+                        idx = cached.get('index', {})
+                        return idx.get('patterns', []), idx.get('files', [])
+        except Exception:
+            pass  # Cache invalid, rebuild
+
+    # Load and parse knowledge.json
+    try:
+        data = json.loads(knowledge_json_path.read_text(encoding='utf-8'))
+    except Exception:
+        return None, None
+
+    # Build index
+    index = build_search_index(data)
+
+    # Save to cache
+    try:
+        with open(cache_path, 'wb') as f:
+            pickle.dump({
+                'mtime': knowledge_mtime,
+                'index': index
+            }, f)
+    except Exception:
+        pass  # Cache write failed, still return index
+
+    return index.get('patterns', []), index.get('files', [])
+
+
+def search_patterns(keywords, patterns_index):
+    """Search pre-indexed patterns for keyword matches."""
+    matches = []
+
+    for p in patterns_index:
+        # Count keyword overlap with pre-computed words
+        overlap = len(keywords & p['words'])
+
+        # Also check for substring matches
+        for kw in keywords:
+            if kw in p['text']:
+                overlap += 1
+
+        if overlap >= 2:
+            matches.append((overlap, p['priority'], p['display']))
+
+    # Sort by overlap score, then by type priority
+    matches.sort(key=lambda x: (-x[0], x[1]))
+    return [m[2] for m in matches[:5]]
+
+
+def search_files(keywords, files_index):
+    """Search pre-indexed files for keyword matches."""
+    matches = []
+
+    for f in files_index:
+        # Count keyword overlap with pre-computed words
+        overlap = len(keywords & f['words'])
 
         # Also check for substring matches in title
         for kw in keywords:
-            if kw in title:
+            if kw in f['title']:
                 overlap += 1
 
-        if overlap >= 2:  # Require at least 2 keyword matches
-            display_title = info.get('title', filepath)[:60]
-            matches.append((overlap, f"  - {display_title}"))
+        if overlap >= 2:
+            matches.append((overlap, f['display']))
 
     matches.sort(key=lambda x: -x[0])
     return [m[1] for m in matches[:3]]
@@ -134,7 +217,19 @@ def main():
         print(json.dumps({}))
         return
 
-    # Find knowledge.json - check current directory and parent
+    # Quick filter: skip if prompt looks like a greeting or simple response
+    prompt_lower = prompt.lower().strip()
+    if prompt_lower in ('yes', 'no', 'ok', 'okay', 'thanks', 'thank you', 'hi', 'hello', 'hey'):
+        print(json.dumps({}))
+        return
+
+    # Extract keywords early - skip if not enough
+    keywords = extract_keywords(prompt)
+    if len(keywords) < 2:
+        print(json.dumps({}))
+        return
+
+    # Find knowledge.json
     knowledge_paths = [
         Path('.claude/knowledge/knowledge.json'),
         Path('../.claude/knowledge/knowledge.json'),
@@ -150,24 +245,16 @@ def main():
         print(json.dumps({}))
         return
 
-    try:
-        data = json.loads(knowledge_json.read_text(encoding='utf-8'))
-    except Exception:
+    # Get cached index (fast path if unchanged)
+    patterns_index, files_index = get_cached_index(knowledge_json)
+
+    if patterns_index is None and files_index is None:
         print(json.dumps({}))
         return
 
-    # Extract keywords from prompt
-    keywords = extract_keywords(prompt)
-    if len(keywords) < 2:
-        print(json.dumps({}))
-        return
-
-    # Search patterns and files
-    patterns = data.get('patterns', [])
-    files = data.get('files', {})
-
-    pattern_matches = search_patterns(keywords, patterns)
-    file_matches = search_files(keywords, files)
+    # Search
+    pattern_matches = search_patterns(keywords, patterns_index) if patterns_index else []
+    file_matches = search_files(keywords, files_index) if files_index else []
 
     if not pattern_matches and not file_matches:
         print(json.dumps({}))
