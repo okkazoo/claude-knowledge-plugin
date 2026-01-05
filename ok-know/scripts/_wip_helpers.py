@@ -1533,9 +1533,7 @@ def create_entry(category: str, topic: str, content: str, slug: Optional[str] = 
     topic_words = topic.replace('-', ' ').split()
     entry_keywords.update(topic_words)
 
-    # Create/update meta
-    keywords_str = ', '.join(sorted(entry_keywords)[:15])  # Limit to 15 keywords
-    create_or_update_meta(category, topic, keywords_str)
+    # Note: _meta.md creation removed - keywords now stored directly in knowledge.json
 
     # Extract and index patterns
     patterns = extract_patterns_from_content(content)
@@ -2435,7 +2433,7 @@ if __name__ == '__main__':
         print("")
         print("Meta commands:")
         print("  create_entry <cat> <topic> <content> [slug] - Create journey entry file (auto-timestamps)")
-        print("  create_or_update_meta <category> <topic> <keywords> - Create/update journey _meta.md")
+        print("  create_or_update_meta <category> <topic> <keywords> - [DEPRECATED] Create/update journey _meta.md")
         sys.exit(1)
 
     command = sys.argv[1]
@@ -2650,8 +2648,10 @@ read -p "Press Enter to close..."
             'count': len(similar)
         }, indent=2))
 
-    # Meta commands
+    # Meta commands (deprecated - keywords now stored in knowledge.json)
     elif command == 'create_or_update_meta':
+        import sys as _sys
+        print("Warning: _meta.md is deprecated. Keywords now stored in knowledge.json", file=_sys.stderr)
         if len(sys.argv) < 5:
             print(json.dumps({'error': 'Usage: create_or_update_meta <category> <topic> <keywords>'}))
             sys.exit(1)
