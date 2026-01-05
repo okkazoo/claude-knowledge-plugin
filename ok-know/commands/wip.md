@@ -75,17 +75,24 @@ wip                  Autonomous mode - analyzes FULL conversation context
    - If "Update existing" → delete the most similar fact file, then continue to step 3
    - If "Cancel" → exit without saving
 
-3. **Create fact file** (use Python heredoc to avoid shell escaping):
+3. **Create fact file** (use JSON stdin to avoid shell escaping):
+
+   **Step 3a**: Use the **Write tool** to create a temp JSON file (do NOT use bash echo/heredoc):
+   - File path: Use a temp file in the project directory, e.g., `.claude/.tmp_fact_input.json`
+   - Content: `{"text": "<text>", "slug": null}`
+   - Important: The Write tool handles special characters safely without shell interpretation
+
+   **Step 3b**: Run Python with stdin from the JSON file:
    ```bash
-   python - "${CLAUDE_PLUGIN_ROOT}/scripts" << 'PYEOF'
-   import sys
-   sys.path.insert(0, sys.argv[1])
-   from _wip_helpers import save_fact
-   save_fact("""<text>""")
-   PYEOF
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" save_fact_stdin < ".claude/.tmp_fact_input.json"
    ```
 
-   Note: Use triple quotes for content. Escape `"""` as `\"\"\"` if it appears in text.
+   **Step 3c**: Clean up the temp file:
+   ```bash
+   rm -f ".claude/.tmp_fact_input.json"
+   ```
+
+   Note: This approach safely handles any content including quotes, backslashes, and special characters.
 
    This creates: `.claude/knowledge/facts/YYYY-MM-DD-<slug>.md`
 
@@ -288,17 +295,24 @@ For each journey topic selected:
    - path/to/file2.jsx
    ```
 
-4. **Create the entry using the helper** (use Python heredoc to avoid shell escaping):
+4. **Create the entry using the helper** (use JSON stdin to avoid shell escaping):
+
+   **Step 4a**: Use the **Write tool** to create a temp JSON file (do NOT use bash echo/heredoc):
+   - File path: Use a temp file in the project directory, e.g., `.claude/.tmp_entry_input.json`
+   - Content: `{"category": "<category>", "topic": "<topic>", "content": "<content>", "slug": null}`
+   - Important: The Write tool handles special characters safely without shell interpretation
+
+   **Step 4b**: Run Python with stdin from the JSON file:
    ```bash
-   python - "${CLAUDE_PLUGIN_ROOT}/scripts" << 'PYEOF'
-   import sys
-   sys.path.insert(0, sys.argv[1])
-   from _wip_helpers import create_entry
-   create_entry("<category>", "<topic>", """<content>""")
-   PYEOF
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" create_entry_stdin < ".claude/.tmp_entry_input.json"
    ```
 
-   Note: Use triple quotes for content. Escape `"""` as `\"\"\"` if it appears in content.
+   **Step 4c**: Clean up the temp file:
+   ```bash
+   rm -f ".claude/.tmp_entry_input.json"
+   ```
+
+   Note: This approach safely handles any content including quotes, backslashes, code blocks, and special characters.
 
    Returns JSON with: `success`, `file`, `category`, `topic`, `patterns_indexed`
 
