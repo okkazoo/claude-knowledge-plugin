@@ -1,7 +1,13 @@
 ---
 name: wip
 description: Save work-in-progress or facts. Use -f/-fact for gotchas/learnings, or no args for autonomous journey detection with multi-topic support.
-allowed-tools: Read, Write, Bash, Grep, Glob, AskUserQuestion
+allowed-tools:
+  - Read
+  - Write
+  - Bash
+  - Grep
+  - Glob
+  - AskUserQuestion
 argument-hint: -fact [description]
 model: sonnet
 ---

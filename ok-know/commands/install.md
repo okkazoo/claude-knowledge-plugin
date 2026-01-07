@@ -1,7 +1,9 @@
 ---
 name: install
 description: Install knowledge base structure in current project
-allowed-tools: Bash, Write
+allowed-tools:
+  - Bash
+  - Write
 model: sonnet
 ---
 
@@ -50,7 +52,7 @@ If `.claude/knowledge/knowledge.json` does NOT exist, create it:
 Always run this to ensure knowledge.json is populated with existing content:
 
 ```bash
-python "C:\Users\craig\.claude\plugins\cache\okkazoo-plugins\ok-know\1.8.7/scripts/_wip_helpers.py" rebuild_knowledge_index
+python "${CLAUDE_PLUGIN_ROOT}/scripts/_wip_helpers.py" rebuild_knowledge_index
 ```
 
 ### 4. Confirm

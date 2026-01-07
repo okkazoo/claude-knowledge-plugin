@@ -1,7 +1,13 @@
 ---
 name: save
 description: Save working state with auto-generated commit message from knowledge.
-allowed-tools: Read, Write, Bash, Grep, Glob, AskUserQuestion
+allowed-tools:
+  - Read
+  - Write
+  - Bash
+  - Grep
+  - Glob
+  - AskUserQuestion
 argument-hint: [description]
 model: sonnet
 ---

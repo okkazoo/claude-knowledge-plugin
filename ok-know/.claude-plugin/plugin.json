@@ -1,5 +1,6 @@
 {
   "name": "ok-know",
-  "version": "1.9.8",
-  "description": "Persistent knowledge management with work-in-progress tracking, save points, and auto-indexing for Claude Code projects"
+  "version": "1.10.0",
+  "description": "Persistent knowledge management with work-in-progress tracking, save points, and auto-indexing for Claude Code projects",
+  "hooks": "../hooks/hooks.json"
 }
