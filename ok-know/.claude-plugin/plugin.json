@@ -1,7 +1,7 @@
 {
   "name": "ok-know",
-  "version": "1.10.2",
-  "description": "Persistent knowledge management with work-in-progress tracking, save points, and auto-indexing for Claude Code projects",
+  "version": "2.0.0",
+  "description": "Dynamic memory system with hybrid search (keyword + semantic), automatic fact extraction, and SQLite storage for Claude Code projects",
   "hooks": {
     "SessionStart": [
       {

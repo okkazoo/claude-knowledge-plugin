@@ -1,20 +1,32 @@
 #!/usr/bin/env python3
 """
-UserPromptSubmit Hook: Search knowledge.json before Claude responds
+UserPromptSubmit Hook - Search memory before Claude responds.
 
-Extracts keywords from user's prompt and searches knowledge.json for:
-- Matching patterns (solutions, gotchas, tried-failed, best-practices)
-- Relevant journey files and facts
+Features:
+- Hybrid search (keyword + semantic) for relevant facts
+- Injects matches into context for Claude to consider
+- Fast-path for simple queries
 
-Uses mtime-based caching to avoid re-parsing on every prompt.
+Note: Deferred extraction is handled separately via /memory extract command
+since Claude Code hooks don't support PostToolUse or state between turns.
 """
 
 import json
 import sys
 import re
-import os
-import pickle
 from pathlib import Path
+
+# Add parent directory to path for core imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from core.searcher import Searcher
+    from core.config import Config
+    from core.models import FactType
+    CORE_AVAILABLE = True
+except ImportError:
+    CORE_AVAILABLE = False
+
 
 # Common words to skip when extracting keywords
 STOP_WORDS = {
@@ -27,181 +39,82 @@ STOP_WORDS = {
     'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each', 'few',
     'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only',
     'own', 'same', 'so', 'than', 'too', 'very', 'just', 'and', 'but',
-    'if', 'or', 'because', 'until', 'while', 'of', 'this', 'that', 'these',
+    'if', 'or', 'because', 'until', 'while', 'this', 'that', 'these',
     'those', 'am', 'it', 'its', 'i', 'me', 'my', 'you', 'your', 'we', 'our',
     'they', 'them', 'their', 'what', 'which', 'who', 'whom', 'any', 'both',
     'let', 'get', 'got', 'make', 'made', 'want', 'please', 'help', 'try',
-    'also', 'like', 'using', 'use', 'used', 'about', 'know', 'think',
+    'also', 'like', 'using', 'use', 'about', 'know', 'think',
     'yes', 'yeah', 'okay', 'sure', 'thanks', 'thank', 'hello', 'hey', 'hi'
 }
 
-MIN_WORD_LENGTH = 3
-CACHE_FILENAME = '.knowledge_cache.pkl'
 
-
-def extract_keywords(text):
+def extract_keywords(text: str, min_length: int = 3) -> set:
     """Extract meaningful keywords from user prompt."""
     words = re.findall(r'[a-zA-Z0-9_-]+', text.lower())
     keywords = set()
     for word in words:
-        if len(word) >= MIN_WORD_LENGTH and word not in STOP_WORDS:
+        if len(word) >= min_length and word not in STOP_WORDS:
             keywords.add(word)
     return keywords
 
 
-def build_search_index(data):
-    """
-    Build optimized search index from knowledge.json data.
+def is_trivial_prompt(prompt: str) -> bool:
+    """Check if prompt is too simple to search."""
+    prompt_lower = prompt.lower().strip()
 
-    Returns:
-        dict with 'patterns' and 'files' pre-processed for fast search
-    """
+    # Skip greetings and simple responses
+    trivial = {
+        'yes', 'no', 'ok', 'okay', 'thanks', 'thank you',
+        'hi', 'hello', 'hey', 'sure', 'got it', 'sounds good',
+        'continue', 'go ahead', 'proceed', 'next', 'done'
+    }
+
+    if prompt_lower in trivial:
+        return True
+
+    # Skip very short prompts
+    if len(prompt) < 15:
+        return True
+
+    return False
+
+
+def format_fact(fact, score: float) -> str:
+    """Format a fact for display."""
     type_icons = {
-        'solution': '[OK]',
-        'tried-failed': '[X]',
-        'gotcha': '[!]',
-        'best-practice': '[*]'
-    }
-    type_priority = {'gotcha': 0, 'tried-failed': 1, 'best-practice': 2, 'solution': 3}
-
-    # Pre-process patterns
-    patterns_index = []
-    for p in data.get('patterns', []):
-        pattern_text = p.get('pattern', p.get('text', '')).lower()
-        context = p.get('context', [])
-        if isinstance(context, str):
-            context = context.lower().replace(',', ' ').split()
-        else:
-            context = [c.lower() for c in context]
-
-        # Pre-compute searchable words
-        all_words = set(pattern_text.split()) | set(context)
-
-        ptype = p.get('type', 'other')
-        icon = type_icons.get(ptype, '*')
-        display_text = p.get('pattern', p.get('text', ''))[:100]
-
-        patterns_index.append({
-            'words': all_words,
-            'text': pattern_text,
-            'type': ptype,
-            'priority': type_priority.get(ptype, 4),
-            'display': f"  {icon} {display_text}"
-        })
-
-    # Pre-process files
-    files_index = []
-    for filepath, info in data.get('files', {}).items():
-        title = info.get('title', filepath).lower()
-        file_keywords = [kw.lower() for kw in info.get('keywords', [])]
-        category = info.get('category', '').lower()
-
-        # Pre-compute searchable words
-        all_words = set(title.split()) | set(file_keywords) | {category}
-
-        display_title = info.get('title', filepath)[:60]
-
-        files_index.append({
-            'words': all_words,
-            'title': title,
-            'display': f"  - {display_title}"
-        })
-
-    return {
-        'patterns': patterns_index,
-        'files': files_index
+        FactType.SOLUTION: "[OK]",
+        FactType.GOTCHA: "[!]",
+        FactType.TRIED_FAILED: "[X]",
+        FactType.DECISION: "[D]",
+        FactType.CONTEXT: "[C]",
     }
 
+    icon = type_icons.get(fact.fact_type, "*")
+    text = fact.text[:100] + "..." if len(fact.text) > 100 else fact.text
 
-def get_cached_index(knowledge_json_path):
-    """
-    Get search index, using cache if knowledge.json hasn't changed.
+    return f"  {icon} {text}"
 
-    Returns:
-        tuple: (patterns_index, files_index) or (None, None) if no data
-    """
-    cache_path = knowledge_json_path.parent / CACHE_FILENAME
+
+def search_memory(prompt: str) -> list:
+    """Search memory for relevant facts."""
+    if not CORE_AVAILABLE:
+        return []
 
     try:
-        knowledge_mtime = knowledge_json_path.stat().st_mtime
-    except OSError:
-        return None, None
+        config = Config.load()
+        searcher = Searcher(config=config)
 
-    # Try to load from cache
-    if cache_path.exists():
-        try:
-            cache_mtime = cache_path.stat().st_mtime
-            # Cache is valid if it's newer than knowledge.json
-            if cache_mtime >= knowledge_mtime:
-                with open(cache_path, 'rb') as f:
-                    cached = pickle.load(f)
-                    if cached.get('mtime') == knowledge_mtime:
-                        idx = cached.get('index', {})
-                        return idx.get('patterns', []), idx.get('files', [])
-        except Exception:
-            pass  # Cache invalid, rebuild
+        # Hybrid search
+        results = searcher.search(prompt, top_k=5)
 
-    # Load and parse knowledge.json
-    try:
-        data = json.loads(knowledge_json_path.read_text(encoding='utf-8'))
-    except Exception:
-        return None, None
+        # Format results
+        formatted = []
+        for fact, score in results:
+            formatted.append(format_fact(fact, score))
 
-    # Build index
-    index = build_search_index(data)
-
-    # Save to cache
-    try:
-        with open(cache_path, 'wb') as f:
-            pickle.dump({
-                'mtime': knowledge_mtime,
-                'index': index
-            }, f)
-    except Exception:
-        pass  # Cache write failed, still return index
-
-    return index.get('patterns', []), index.get('files', [])
-
-
-def search_patterns(keywords, patterns_index):
-    """Search pre-indexed patterns for keyword matches."""
-    matches = []
-
-    for p in patterns_index:
-        # Count keyword overlap with pre-computed words
-        overlap = len(keywords & p['words'])
-
-        # Also check for substring matches
-        for kw in keywords:
-            if kw in p['text']:
-                overlap += 1
-
-        if overlap >= 2:
-            matches.append((overlap, p['priority'], p['display']))
-
-    # Sort by overlap score, then by type priority
-    matches.sort(key=lambda x: (-x[0], x[1]))
-    return [m[2] for m in matches[:5]]
-
-
-def search_files(keywords, files_index):
-    """Search pre-indexed files for keyword matches."""
-    matches = []
-
-    for f in files_index:
-        # Count keyword overlap with pre-computed words
-        overlap = len(keywords & f['words'])
-
-        # Also check for substring matches in title
-        for kw in keywords:
-            if kw in f['title']:
-                overlap += 1
-
-        if overlap >= 2:
-            matches.append((overlap, f['display']))
-
-    matches.sort(key=lambda x: -x[0])
-    return [m[1] for m in matches[:3]]
+        return formatted
+    except Exception as e:
+        return []
 
 
 def main():
@@ -213,65 +126,29 @@ def main():
 
     # Get user's prompt
     prompt = input_data.get('prompt', '')
-    if not prompt or len(prompt) < 10:
+
+    # Quick exit for trivial prompts
+    if not prompt or is_trivial_prompt(prompt):
         print(json.dumps({}))
         return
 
-    # Quick filter: skip if prompt looks like a greeting or simple response
-    prompt_lower = prompt.lower().strip()
-    if prompt_lower in ('yes', 'no', 'ok', 'okay', 'thanks', 'thank you', 'hi', 'hello', 'hey'):
-        print(json.dumps({}))
-        return
-
-    # Extract keywords early - skip if not enough
+    # Extract keywords - skip if not enough
     keywords = extract_keywords(prompt)
     if len(keywords) < 2:
         print(json.dumps({}))
         return
 
-    # Find knowledge.json
-    knowledge_paths = [
-        Path('.claude/knowledge/knowledge.json'),
-        Path('../.claude/knowledge/knowledge.json'),
-    ]
+    # Search memory
+    matches = search_memory(prompt)
 
-    knowledge_json = None
-    for kp in knowledge_paths:
-        if kp.exists():
-            knowledge_json = kp
-            break
-
-    if not knowledge_json:
-        print(json.dumps({}))
-        return
-
-    # Get cached index (fast path if unchanged)
-    patterns_index, files_index = get_cached_index(knowledge_json)
-
-    if patterns_index is None and files_index is None:
-        print(json.dumps({}))
-        return
-
-    # Search
-    pattern_matches = search_patterns(keywords, patterns_index) if patterns_index else []
-    file_matches = search_files(keywords, files_index) if files_index else []
-
-    if not pattern_matches and not file_matches:
+    if not matches:
         print(json.dumps({}))
         return
 
     # Build message
-    msg_parts = [">> KNOWLEDGE BASE MATCHES:"]
-
-    if pattern_matches:
-        msg_parts.append("\nPatterns (check before trying):")
-        msg_parts.extend(pattern_matches)
-
-    if file_matches:
-        msg_parts.append("\nRelated entries:")
-        msg_parts.extend(file_matches)
-
-    msg_parts.append("\n(Review these before suggesting an approach)")
+    msg_parts = [">> MEMORY MATCHES:"]
+    msg_parts.extend(matches)
+    msg_parts.append("\n(Consider these before responding)")
 
     print(json.dumps({
         "message": "\n".join(msg_parts)

@@ -1,125 +1,97 @@
 #!/usr/bin/env python3
-"""PreToolUse Hook: Pre-Search Index Check"""
+"""
+PreToolUse Hook for Grep - Search memory before grep operations.
+
+Surfaces relevant facts that might help with the search query.
+"""
 
 import json
 import sys
+from pathlib import Path
+
+# Add parent directory to path for core imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from pathlib import Path
+    from core.searcher import Searcher
+    from core.config import Config
+    from core.models import FactType
+    CORE_AVAILABLE = True
+except ImportError:
+    CORE_AVAILABLE = False
 
-    def search_patterns(pattern):
-        """Search knowledge.json patterns for matching entries."""
-        matches = []
-        knowledge_json_path = Path('.claude/knowledge/knowledge.json')
 
-        if not knowledge_json_path.exists():
-            return matches
+def format_fact(fact, score: float) -> str:
+    """Format a fact for display."""
+    type_icons = {
+        FactType.SOLUTION: "[OK]",
+        FactType.GOTCHA: "[!]",
+        FactType.TRIED_FAILED: "[X]",
+        FactType.DECISION: "[D]",
+        FactType.CONTEXT: "[C]",
+    }
 
-        try:
-            data = json.loads(knowledge_json_path.read_text(encoding='utf-8'))
-        except:
-            return matches
+    icon = type_icons.get(fact.fact_type, "*")
+    text = fact.text[:80] + "..." if len(fact.text) > 80 else fact.text
 
-        patterns_list = data.get('patterns', [])
-        pattern_lower = pattern.lower()
-        pattern_words = set(pattern_lower.split())
+    return f"  {icon} {text}"
 
-        type_icons = {
-            'solution': '[OK]',
-            'tried-failed': '[X]',
-            'gotcha': '[!]',
-            'best-practice': '[*]'
-        }
 
-        scored = []
-        for p in patterns_list:
-            pattern_text = p.get('pattern', '').lower()
-            context = p.get('context', '').lower().replace(',', ' ')
+def search_memory(query: str) -> list:
+    """Search memory for relevant facts."""
+    if not CORE_AVAILABLE:
+        return []
 
-            all_words = set(pattern_text.split()) | set(context.split())
-            overlap = len(pattern_words & all_words)
+    try:
+        config = Config.load()
+        searcher = Searcher(config=config)
 
-            if pattern_lower in pattern_text or pattern_lower in context:
-                overlap += 2
+        # Search with smaller result set for pre-tool context
+        results = searcher.search(query, top_k=3)
 
-            if overlap > 0:
-                ptype = p.get('type', 'other')
-                icon = type_icons.get(ptype, '*')
-                scored.append((overlap, f"  {icon} {p.get('pattern', '')}"))
+        formatted = []
+        for fact, score in results:
+            formatted.append(format_fact(fact, score))
 
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [m for _, m in scored[:5]]
+        return formatted
+    except Exception:
+        return []
 
-    def search_knowledge_keywords(pattern):
-        """Search knowledge.json for matching keywords."""
-        matches = []
-        knowledge_json_path = Path('.claude/knowledge/knowledge.json')
-        knowledge_base = Path('.claude/knowledge')
 
-        if not knowledge_json_path.exists():
-            return matches
+def main():
+    try:
+        input_data = json.load(sys.stdin)
+    except Exception:
+        print(json.dumps({}))
+        return
 
-        try:
-            data = json.loads(knowledge_json_path.read_text(encoding='utf-8'))
-        except:
-            return matches
+    # Get the search pattern from tool input
+    tool_input = input_data.get('tool_input', {})
+    pattern = tool_input.get('pattern', '')
 
-        pattern_lower = pattern.lower()
+    # Skip very short patterns
+    if not pattern or len(pattern) < 2:
+        print(json.dumps({}))
+        return
 
-        for filepath, info in data.get('files', {}).items():
-            full_path = knowledge_base / filepath
-            if not full_path.exists():
-                continue
+    # Search memory for related facts
+    matches = search_memory(pattern)
 
-            keywords = info.get('keywords', [])
-            title = info.get('title', filepath)
+    if not matches:
+        print(json.dumps({}))
+        return
 
-            matching_keywords = [kw for kw in keywords if pattern_lower in kw.lower()]
-            if matching_keywords:
-                kw_str = ', '.join(matching_keywords[:3])
-                matches.append(f"  - {title} -> {filepath} (keywords: {kw_str})")
+    # Build message
+    msg_parts = [f">> Memory hints for '{pattern}':"]
+    msg_parts.extend(matches)
 
-        return matches[:5]
+    print(json.dumps({
+        "message": "\n".join(msg_parts)
+    }))
 
-    def main():
-        try:
-            input_data = json.load(sys.stdin)
-        except:
-            print(json.dumps({"decision": "continue"}))
-            return
 
-        tool_input = input_data.get('tool_input', {})
-        pattern = tool_input.get('pattern', '')
-
-        if not pattern or len(pattern) < 2:
-            print(json.dumps({"decision": "continue"}))
-            return
-
-        pattern_matches = search_patterns(pattern)
-        knowledge_matches = search_knowledge_keywords(pattern)
-
-        if pattern_matches or knowledge_matches:
-            msg_parts = [f"Index matches for '{pattern}':"]
-
-            if pattern_matches:
-                msg_parts.append("\n>> PATTERNS (check before trying):")
-                msg_parts.extend(pattern_matches)
-
-            if knowledge_matches:
-                msg_parts.append("\nKnowledge:")
-                msg_parts.extend(knowledge_matches[:5])
-
-            msg_parts.append("\n(Skip search if these answer your question)")
-
-            print(json.dumps({
-                "decision": "continue",
-                "message": "\n".join(msg_parts)
-            }))
-        else:
-            print(json.dumps({"decision": "continue"}))
-
-    if __name__ == "__main__":
+if __name__ == "__main__":
+    try:
         main()
-
-except Exception:
-    print(json.dumps({"decision": "continue"}))
+    except Exception:
+        print(json.dumps({}))

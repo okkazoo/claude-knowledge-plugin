@@ -1,14 +1,26 @@
 #!/usr/bin/env python3
-"""PreToolUse Hook: Search knowledge before Glob searches
+"""
+PreToolUse Hook for Glob - Search memory before glob operations.
 
-When Claude uses Glob to find files, first check if knowledge.json
-has relevant patterns or files that might answer the question.
+Surfaces relevant facts that might help with file pattern searches.
 """
 
 import json
 import sys
 import re
 from pathlib import Path
+
+# Add parent directory to path for core imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from core.searcher import Searcher
+    from core.config import Config
+    from core.models import FactType
+    CORE_AVAILABLE = True
+except ImportError:
+    CORE_AVAILABLE = False
+
 
 STOP_WORDS = {
     'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
@@ -25,7 +37,6 @@ STOP_WORDS = {
 
 def extract_keywords(text):
     """Extract meaningful keywords from glob pattern."""
-    # Extract words from pattern, ignoring glob chars
     words = re.findall(r'[a-zA-Z][a-zA-Z0-9_-]*', text.lower())
     keywords = set()
     for word in words:
@@ -34,109 +45,72 @@ def extract_keywords(text):
     return keywords
 
 
-def search_knowledge(keywords):
-    """Search knowledge.json for matching entries."""
-    matches = {'patterns': [], 'files': []}
-    knowledge_json = Path('.claude/knowledge/knowledge.json')
-
-    if not knowledge_json.exists():
-        return matches
-
-    try:
-        data = json.loads(knowledge_json.read_text(encoding='utf-8'))
-    except:
-        return matches
-
+def format_fact(fact, score: float) -> str:
+    """Format a fact for display."""
     type_icons = {
-        'solution': '[OK]',
-        'tried-failed': '[X]',
-        'gotcha': '[!]',
-        'best-practice': '[*]'
+        FactType.SOLUTION: "[OK]",
+        FactType.GOTCHA: "[!]",
+        FactType.TRIED_FAILED: "[X]",
+        FactType.DECISION: "[D]",
+        FactType.CONTEXT: "[C]",
     }
 
-    # Search patterns
-    for p in data.get('patterns', []):
-        pattern_text = p.get('pattern', '').lower()
-        context = p.get('context', '')
-        if isinstance(context, list):
-            context = ' '.join(context)
-        context = context.lower()
+    icon = type_icons.get(fact.fact_type, "*")
+    text = fact.text[:80] + "..." if len(fact.text) > 80 else fact.text
 
-        all_text = pattern_text + ' ' + context
-        overlap = sum(1 for kw in keywords if kw in all_text)
+    return f"  {icon} {text}"
 
-        if overlap >= 1:  # Lower threshold for glob patterns
-            ptype = p.get('type', 'other')
-            icon = type_icons.get(ptype, '*')
-            matches['patterns'].append({
-                'score': overlap,
-                'text': f"{icon} {p.get('pattern', '')}"
-            })
 
-    # Search files by keywords
-    for filepath, info in data.get('files', {}).items():
-        file_keywords = set(kw.lower() for kw in info.get('keywords', []))
-        title = info.get('title', filepath).lower()
+def search_memory(query: str) -> list:
+    """Search memory for relevant facts."""
+    if not CORE_AVAILABLE:
+        return []
 
-        overlap = len(keywords & file_keywords)
-        title_overlap = sum(1 for kw in keywords if kw in title)
-        total_score = overlap + title_overlap
+    try:
+        config = Config.load()
+        searcher = Searcher(config=config)
 
-        if total_score >= 1:  # Lower threshold
-            matches['files'].append({
-                'score': total_score,
-                'path': filepath,
-                'title': info.get('title', filepath)
-            })
+        results = searcher.search(query, top_k=3)
 
-    matches['patterns'].sort(key=lambda x: x['score'], reverse=True)
-    matches['files'].sort(key=lambda x: x['score'], reverse=True)
+        formatted = []
+        for fact, score in results:
+            formatted.append(format_fact(fact, score))
 
-    return matches
+        return formatted
+    except Exception:
+        return []
 
 
 def main():
     try:
         input_data = json.loads(sys.stdin.read())
-    except:
-        print(json.dumps({"continue": True}))
+    except Exception:
+        print(json.dumps({}))
         return
 
     tool_input = input_data.get('tool_input', {})
     pattern = tool_input.get('pattern', '')
 
     if not pattern or len(pattern) < 3:
-        print(json.dumps({"continue": True}))
+        print(json.dumps({}))
         return
 
     keywords = extract_keywords(pattern)
 
     if len(keywords) < 1:
-        print(json.dumps({"continue": True}))
+        print(json.dumps({}))
         return
 
-    matches = search_knowledge(keywords)
+    matches = search_memory(' '.join(keywords))
 
-    if not matches['patterns'] and not matches['files']:
-        print(json.dumps({"continue": True}))
+    if not matches:
+        print(json.dumps({}))
         return
 
-    msg_parts = [f">> KNOWLEDGE CHECK for '{pattern}':"]
-
-    if matches['patterns']:
-        msg_parts.append("\nRelevant patterns:")
-        for p in matches['patterns'][:3]:
-            msg_parts.append(f"  {p['text']}")
-
-    if matches['files']:
-        msg_parts.append("\nKnowledge files:")
-        for f in matches['files'][:3]:
-            msg_parts.append(f"  - {f['title']}")
-
-    msg_parts.append("\n(Check knowledge first - may already have the answer)")
+    msg_parts = [f">> Memory hints for '{pattern}':"]
+    msg_parts.extend(matches)
 
     print(json.dumps({
-        "continue": True,
         "message": "\n".join(msg_parts)
     }))
 
@@ -145,4 +119,4 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        print(json.dumps({"continue": True}))
+        print(json.dumps({}))

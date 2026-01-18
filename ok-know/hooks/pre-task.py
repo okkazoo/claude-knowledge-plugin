@@ -1,16 +1,28 @@
 #!/usr/bin/env python3
 """
-PreToolUse Hook: Search knowledge before launching Task agents
+PreToolUse Hook for Task - Search memory before launching agents.
 
-When Claude launches exploration or planning agents, first search the local
-knowledge base for relevant context. This saves API costs by surfacing
-existing knowledge before expensive agent searches.
+When Claude launches exploration or planning agents, first search
+the local knowledge base for relevant context. This saves API costs
+by surfacing existing knowledge before expensive agent searches.
 """
 
 import json
 import sys
 import re
 from pathlib import Path
+
+# Add parent directory to path for core imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from core.searcher import Searcher
+    from core.config import Config
+    from core.models import FactType
+    CORE_AVAILABLE = True
+except ImportError:
+    CORE_AVAILABLE = False
+
 
 # Agent types that benefit from knowledge context
 KNOWLEDGE_RELEVANT_AGENTS = {
@@ -41,74 +53,49 @@ def extract_keywords(text):
     return keywords
 
 
-def search_knowledge(keywords):
-    """Search knowledge.json for matching entries."""
-    matches = {'patterns': [], 'files': []}
-    knowledge_json = Path('.claude/knowledge/knowledge.json')
-
-    if not knowledge_json.exists():
-        return matches
-
-    try:
-        data = json.loads(knowledge_json.read_text(encoding='utf-8'))
-    except:
-        return matches
-
-    # Search patterns
+def format_fact(fact, score: float) -> str:
+    """Format a fact for display."""
     type_icons = {
-        'solution': '[OK]',
-        'tried-failed': '[X]',
-        'gotcha': '[!]',
-        'best-practice': '[*]'
+        FactType.SOLUTION: "[OK]",
+        FactType.GOTCHA: "[!]",
+        FactType.TRIED_FAILED: "[X]",
+        FactType.DECISION: "[D]",
+        FactType.CONTEXT: "[C]",
     }
 
-    for p in data.get('patterns', []):
-        pattern_text = p.get('pattern', '').lower()
-        context = p.get('context', '')
-        if isinstance(context, list):
-            context = ' '.join(context)
-        context = context.lower()
+    icon = type_icons.get(fact.fact_type, "*")
+    text = fact.text[:80] + "..." if len(fact.text) > 80 else fact.text
+    files = f" ({', '.join(fact.file_refs[:2])})" if fact.file_refs else ""
 
-        all_text = pattern_text + ' ' + context
-        overlap = sum(1 for kw in keywords if kw in all_text)
+    return f"  {icon} {text}{files}"
 
-        if overlap >= 2:  # Need at least 2 keyword matches
-            ptype = p.get('type', 'other')
-            icon = type_icons.get(ptype, '*')
-            matches['patterns'].append({
-                'score': overlap,
-                'text': f"{icon} {p.get('pattern', '')}"
-            })
 
-    # Search files by keywords
-    for filepath, info in data.get('files', {}).items():
-        file_keywords = set(kw.lower() for kw in info.get('keywords', []))
-        title = info.get('title', filepath).lower()
+def search_memory(query: str) -> list:
+    """Search memory for relevant facts."""
+    if not CORE_AVAILABLE:
+        return []
 
-        overlap = len(keywords & file_keywords)
-        title_overlap = sum(1 for kw in keywords if kw in title)
-        total_score = overlap + title_overlap
+    try:
+        config = Config.load()
+        searcher = Searcher(config=config)
 
-        if total_score >= 2:
-            matches['files'].append({
-                'score': total_score,
-                'path': filepath,
-                'title': info.get('title', filepath),
-                'keywords': list(file_keywords & keywords)[:3]
-            })
+        # More results for task agents
+        results = searcher.search(query, top_k=5)
 
-    # Sort by score
-    matches['patterns'].sort(key=lambda x: x['score'], reverse=True)
-    matches['files'].sort(key=lambda x: x['score'], reverse=True)
+        formatted = []
+        for fact, score in results:
+            formatted.append(format_fact(fact, score))
 
-    return matches
+        return formatted
+    except Exception:
+        return []
 
 
 def main():
     try:
         input_data = json.loads(sys.stdin.read())
-    except:
-        print(json.dumps({"continue": True}))
+    except Exception:
+        print(json.dumps({}))
         return
 
     tool_input = input_data.get('tool_input', {})
@@ -117,43 +104,26 @@ def main():
 
     # Only intercept relevant agent types
     if agent_type not in KNOWLEDGE_RELEVANT_AGENTS:
-        print(json.dumps({"continue": True}))
+        print(json.dumps({}))
         return
 
-    # Extract keywords from the task prompt
     keywords = extract_keywords(prompt)
 
     if len(keywords) < 2:
-        print(json.dumps({"continue": True}))
+        print(json.dumps({}))
         return
 
-    # Search knowledge base
-    matches = search_knowledge(keywords)
+    matches = search_memory(prompt)
 
-    if not matches['patterns'] and not matches['files']:
-        print(json.dumps({"continue": True}))
+    if not matches:
+        print(json.dumps({}))
         return
 
-    # Build context message
     msg_parts = [">> EXISTING KNOWLEDGE (check before exploring):"]
-
-    if matches['patterns']:
-        msg_parts.append("\nPatterns:")
-        for p in matches['patterns'][:5]:
-            msg_parts.append(f"  {p['text']}")
-
-    if matches['files']:
-        msg_parts.append("\nRelevant files:")
-        for f in matches['files'][:5]:
-            kw_str = ', '.join(f['keywords']) if f['keywords'] else ''
-            msg_parts.append(f"  - {f['title']} ({f['path']})")
-            if kw_str:
-                msg_parts.append(f"    keywords: {kw_str}")
-
-    msg_parts.append("\n(Read these files first - may have the answer already)")
+    msg_parts.extend(matches)
+    msg_parts.append("\n(Read these first - may have the answer already)")
 
     print(json.dumps({
-        "continue": True,
         "message": "\n".join(msg_parts)
     }))
 
@@ -162,4 +132,4 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        print(json.dumps({"continue": True}))
+        print(json.dumps({}))

@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
 """
-SessionStart Hook
-Injects current project state and context from previous sessions.
+SessionStart Hook - Injects project state and recent facts from memory.
+
+Runs once at the start of each Claude Code session.
 """
 
 import json
 import sys
 import subprocess
 from pathlib import Path
+
+# Add parent directory to path for core imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from core.database import Database
+    from core.config import Config
+    from core.models import FactType
+    CORE_AVAILABLE = True
+except ImportError:
+    CORE_AVAILABLE = False
 
 
 def get_git_status():
@@ -40,73 +52,65 @@ def get_git_status():
         return {"error": str(e)}
 
 
-def get_active_journeys():
-    """Get list of active (non-completed) journeys."""
-    try:
-        journey_dir = Path(".claude/knowledge/journey")
-        if not journey_dir.exists():
-            return []
+def get_memory_stats():
+    """Get statistics from the memory database."""
+    if not CORE_AVAILABLE:
+        return None
 
-        active_journeys = []
-        for category_folder in journey_dir.iterdir():
-            if not category_folder.is_dir() or category_folder.name.startswith(('_', '.')):
-                continue
-            for topic_folder in category_folder.iterdir():
-                if not topic_folder.is_dir() or topic_folder.name.startswith(('_', '.')):
-                    continue
-                meta_file = topic_folder / "_meta.md"
-                if meta_file.exists():
-                    with open(meta_file) as f:
-                        content = f.read()
-                    if "status: completed" not in content:
-                        category = category_folder.name
-                        topic = topic_folder.name
-                        entries = len(list(topic_folder.glob("*.md"))) - 1
-                        active_journeys.append(f"- **{category}/{topic}** ({entries} entries)")
-        return active_journeys
+    try:
+        config = Config.load()
+        db = Database(config)
+        stats = db.get_stats()
+        db.close()
+        return stats
+    except Exception:
+        return None
+
+
+def get_recent_facts(limit: int = 5):
+    """Get most recent facts from memory."""
+    if not CORE_AVAILABLE:
+        return []
+
+    try:
+        config = Config.load()
+        db = Database(config)
+        facts = db.get_recent_facts(limit)
+        db.close()
+
+        type_icons = {
+            FactType.SOLUTION: "[OK]",
+            FactType.GOTCHA: "[!]",
+            FactType.TRIED_FAILED: "[X]",
+            FactType.DECISION: "[D]",
+            FactType.CONTEXT: "[C]",
+        }
+
+        result = []
+        for fact in facts:
+            icon = type_icons.get(fact.fact_type, "*")
+            text = fact.text[:80] + "..." if len(fact.text) > 80 else fact.text
+            result.append(f"  {icon} {text}")
+
+        return result
     except Exception:
         return []
 
 
-def get_knowledge_stats():
-    """Get quick stats about knowledge base."""
+def get_important_gotchas(limit: int = 3):
+    """Get important gotchas that should always be shown."""
+    if not CORE_AVAILABLE:
+        return []
+
     try:
-        knowledge_dir = Path(".claude/knowledge")
-        if not knowledge_dir.exists():
-            return None
+        config = Config.load()
+        db = Database(config)
+        gotchas = db.get_recent_facts(limit, FactType.GOTCHA)
+        db.close()
 
-        completed_count = 0
-        active_count = 0
-        journey_dir = knowledge_dir / "journey"
-        if journey_dir.exists():
-            for category_dir in journey_dir.iterdir():
-                if not category_dir.is_dir() or category_dir.name.startswith(('_', '.')):
-                    continue
-                for topic_dir in category_dir.iterdir():
-                    if not topic_dir.is_dir() or topic_dir.name.startswith(('_', '.')):
-                        continue
-                    meta_file = topic_dir / "_meta.md"
-                    if meta_file.exists():
-                        with open(meta_file) as f:
-                            if "status: completed" in f.read():
-                                completed_count += 1
-                            else:
-                                active_count += 1
-
-        facts_dir = knowledge_dir / "facts"
-        facts_count = len([f for f in facts_dir.glob("*.md") if not f.name.startswith('.')]) if facts_dir.exists() else 0
-
-        savepoints_dir = knowledge_dir / "savepoints"
-        savepoint_count = len([f for f in savepoints_dir.glob("*.md") if not f.name.startswith('.')]) if savepoints_dir.exists() else 0
-
-        return {
-            "completed": completed_count,
-            "active": active_count,
-            "facts": facts_count,
-            "savepoints": savepoint_count,
-        }
+        return [f"  [!] {g.text[:100]}" for g in gotchas]
     except Exception:
-        return None
+        return []
 
 
 def main():
@@ -118,6 +122,7 @@ def main():
     try:
         context_parts = []
 
+        # Git status
         git = get_git_status()
         if "error" not in git:
             context_parts.append(f"""## Current State
@@ -128,19 +133,29 @@ def main():
             if git['modified_count'] > 0:
                 context_parts.append(f"```\n{git['modified_files']}\n```")
 
-        stats = get_knowledge_stats()
-        if stats:
-            context_parts.append(f"""## Knowledge Base
-- Completed: {stats['completed']} | Active: {stats['active']} | Facts: {stats['facts']} | Savepoints: {stats['savepoints']}
+        # Memory stats
+        stats = get_memory_stats()
+        if stats and stats.get("total_facts", 0) > 0:
+            by_type = stats.get("by_type", {})
+            type_summary = ", ".join(f"{k}: {v}" for k, v in by_type.items())
+            context_parts.append(f"""## Memory
+- **Total facts:** {stats['total_facts']} ({type_summary})
+- **With embeddings:** {stats.get('with_embeddings', 0)}
 """)
 
-        active_journeys = get_active_journeys()
-        if active_journeys:
-            context_parts.append(f"""## Active Journeys (Work in Progress)
-{chr(10).join(active_journeys)}
+        # Important gotchas (always show these)
+        gotchas = get_important_gotchas()
+        if gotchas:
+            context_parts.append("## Important Gotchas")
+            context_parts.extend(gotchas)
+            context_parts.append("")
 
-*Run `/ok-know:wip` to add progress.*
-""")
+        # Recent facts
+        recent = get_recent_facts(5)
+        if recent:
+            context_parts.append("## Recent Facts")
+            context_parts.extend(recent)
+            context_parts.append("\n*Use `/ok-know:knowledge` for more, `/ok-know:wip` to add facts.*")
 
         if context_parts:
             output = {

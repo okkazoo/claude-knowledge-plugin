@@ -5,16 +5,31 @@ Helper functions for autonomous .wip command and refactor cleanup.
 This script provides utilities for:
 1. Autonomous .wip: Auto-categorizing journeys based on conversation context
 2. Refactor cleanup: Reorganizing and merging overlapping journeys
+3. Integration with SQLite memory database (ok-know v2)
 """
 
 import json
 import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import re
+
+# Add parent directory to path for core imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Try to import core modules for SQLite integration
+try:
+    from core.database import Database
+    from core.config import Config
+    from core.models import AtomicFact, FactType
+    from core.embedder import Embedder
+    SQLITE_AVAILABLE = True
+except ImportError:
+    SQLITE_AVAILABLE = False
 
 
 # ANSI color codes for terminal output
@@ -441,10 +456,70 @@ def save_fact(fact_text: str, slug: Optional[str] = None) -> Path:
 
     file_path.write_text(content, encoding='utf-8')
 
-    # Index the fact for pre-search discovery
+    # Index the fact for pre-search discovery (legacy knowledge.json)
     index_fact(file_path)
 
+    # Also save to SQLite database (ok-know v2)
+    save_fact_to_sqlite(fact_text, file_path)
+
     return file_path
+
+
+def save_fact_to_sqlite(fact_text: str, file_path: Optional[Path] = None) -> Optional[str]:
+    """
+    Save a fact to the SQLite memory database (ok-know v2).
+
+    Args:
+        fact_text: The fact text to save
+        file_path: Optional path to the markdown file for reference
+
+    Returns:
+        Fact ID if saved, None if SQLite not available
+    """
+    if not SQLITE_AVAILABLE:
+        return None
+
+    try:
+        config = Config.load()
+        db = Database(config)
+        embedder = Embedder(config)
+
+        # Determine fact type based on content
+        fact_type = FactType.CONTEXT
+        text_lower = fact_text.lower()
+        if any(word in text_lower for word in ['don\'t', 'never', 'avoid', 'warning', 'gotcha', 'careful']):
+            fact_type = FactType.GOTCHA
+        elif any(word in text_lower for word in ['use', 'always', 'solution', 'fix', 'works']):
+            fact_type = FactType.SOLUTION
+        elif any(word in text_lower for word in ['tried', 'failed', 'doesn\'t work', 'broken']):
+            fact_type = FactType.TRIED_FAILED
+        elif any(word in text_lower for word in ['decided', 'decision', 'chose', 'architecture']):
+            fact_type = FactType.DECISION
+
+        # Extract keywords
+        words = re.findall(r'[a-zA-Z0-9_-]+', fact_text.lower())
+        keywords = [w for w in words if len(w) >= 3][:15]
+
+        # Create fact
+        fact = AtomicFact(
+            text=fact_text,
+            fact_type=fact_type,
+            confidence=1.0,
+            keywords=keywords,
+            file_refs=[str(file_path)] if file_path else [],
+            source_type="manual",
+        )
+
+        # Add embedding if available
+        if embedder.is_available():
+            fact.embedding = embedder.embed(fact_text)
+
+        fact_id = db.add_fact(fact)
+        db.close()
+
+        return fact_id
+    except Exception:
+        return None
 
 
 def index_fact(fact_file: Path) -> int:
