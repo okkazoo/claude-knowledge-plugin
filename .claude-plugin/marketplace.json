@@ -11,10 +11,10 @@
       "version": "1.10.1"
     },
     {
-      "name": "worklog",
-      "source": "./worklog/",
-      "description": "Autonomous activity tracking - logs all file changes and user tasks without relying on Claude to decide what's worth remembering",
-      "version": "1.0.1"
+      "name": "echo",
+      "source": "./echo/",
+      "description": "Autonomous activity tracking with structure capture - logs file changes, search patterns, and codebase understanding",
+      "version": "1.1.0"
     }
   ]
 }
