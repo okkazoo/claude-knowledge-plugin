@@ -37,5 +37,6 @@ def is_verbose() -> bool:
 
 def log_verbose(message: str):
     """Print message if verbose mode is enabled."""
+    import sys
     if is_verbose():
-        print(message)
+        print(message, file=sys.stderr)
