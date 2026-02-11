@@ -1,0 +1,40 @@
+{
+  "name": "okode",
+  "version": "1.0.0",
+  "description": "Living code graph system — maps all runtime relationships (endpoints, services, DB ops, external APIs) into a queryable graph so Claude understands your codebase without exploring it",
+  "author": {"name": "okkazoo"},
+  "keywords": ["code-graph", "architecture", "analysis", "code-intelligence", "codebase-map"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/okode_pre_session.py",
+            "timeout": 10,
+            "once": true
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/okode_post_task.py",
+            "timeout": 30,
+            "async": true
+          },
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/okode_frontmatter.py",
+            "timeout": 15,
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

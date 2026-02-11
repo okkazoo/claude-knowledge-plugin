@@ -15,6 +15,12 @@
       "source": "./echo/",
       "description": "Autonomous activity tracking with structure capture - logs file changes, search patterns, and codebase understanding",
       "version": "1.1.0"
+    },
+    {
+      "name": "okode",
+      "source": "./okode/",
+      "description": "Living code graph system — maps runtime relationships into a queryable graph for deep codebase understanding",
+      "version": "1.0.0"
     }
   ]
 }
