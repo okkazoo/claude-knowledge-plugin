@@ -183,19 +183,29 @@ def extract_structures(content: str, file_path: str) -> List[Dict[str, Any]]:
 
 
 def get_content_from_hook_data(data: Dict) -> Optional[str]:
-    """Extract content from Write or Edit tool input."""
+    """Extract content by reading the full file from disk.
+
+    PostToolUse fires AFTER the write, so the file is current.
+    Reading the full file captures ALL structures, not just the edited snippet.
+    """
     tool_name = data.get("tool_name", "")
     tool_input = data.get("tool_input", {})
+    file_path = tool_input.get("file_path", "")
 
+    # For ALL tools, read the actual file from disk
+    if file_path and os.path.exists(file_path):
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+        except Exception:
+            pass
+
+    # Fallback to tool input content
     if tool_name == "Write":
         return tool_input.get("content", "")
     elif tool_name == "Edit":
-        # For Edit, we get new_string which is partial
-        # We'd need to read the full file to get complete picture
-        # For now, just capture what's in new_string
         return tool_input.get("new_string", "")
     elif tool_name == "MultiEdit":
-        # Combine all edits
         edits = tool_input.get("edits", [])
         return "\n".join(e.get("new_string", "") for e in edits)
 
@@ -248,6 +258,13 @@ def main():
         timestamp = datetime.now().isoformat()
         task_hint = get_task_keywords()
 
+        # Build path keywords from directory segments
+        path_keywords = []
+        for part in Path(file_path).parts:
+            stem = Path(part).stem.lower()
+            if stem and len(stem) >= 2:
+                path_keywords.append(stem)
+
         with open(structures_file, "a", encoding="utf-8") as f:
             for struct in structures:
                 entry = {
@@ -256,6 +273,7 @@ def main():
                     "name": struct["name"],
                     "type": struct["type"],
                     "task_hint": task_hint,
+                    "path_keywords": path_keywords,
                     "operation": "created" if tool_name == "Write" else "modified",
                 }
                 f.write(json.dumps(entry) + "\n")

@@ -1,19 +1,39 @@
 {
   "name": "echo",
-  "version": "2.1.0",
-  "description": "Autonomous knowledge capture - remembers code structures, search patterns, and activity to help Claude navigate your codebase",
+  "version": "3.0.0",
+  "description": "Fully autonomous context system - captures code structures, search patterns, and activity; auto-injects relevant knowledge on every prompt",
   "author": {"name": "okkazoo"},
-  "keywords": ["memory", "knowledge", "structure", "context", "navigation"],
+  "keywords": ["memory", "knowledge", "structure", "context", "navigation", "autonomous"],
   "repository": "https://github.com/okkazoo/echo",
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "startup",
         "hooks": [
           {
             "type": "command",
             "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/consolidate_structure.py",
-            "timeout": 10,
-            "once": true
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/compact_restore.py",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/consolidate_structure.py",
+            "timeout": 10
           }
         ]
       }
@@ -28,7 +48,19 @@
           },
           {
             "type": "command",
-            "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/search_structures.py",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/context_builder.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/scripts/pre_compact_save.py",
             "timeout": 5
           }
         ]
