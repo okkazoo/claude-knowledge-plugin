@@ -291,6 +291,27 @@ def main():
         if structures:
             save_verified_structures(worklog_dir, structures)
 
+        # Prune searches.jsonl to only recent entries (7-day window)
+        searches_file = worklog_dir / "searches.jsonl"
+        if searches and searches_file.exists():
+            cutoff = datetime.now() - timedelta(days=7)
+            kept = []
+            for entry in searches_raw:
+                try:
+                    ts = datetime.fromisoformat(entry.get("ts", ""))
+                    if ts >= cutoff:
+                        kept.append(entry)
+                except ValueError:
+                    continue
+            temp = worklog_dir / "searches.jsonl.new"
+            with open(temp, "w", encoding="utf-8") as f:
+                for entry in kept:
+                    f.write(json.dumps(entry) + "\n")
+            if temp.exists():
+                if searches_file.exists():
+                    searches_file.unlink()
+                temp.rename(searches_file)
+
         # Output context for Claude
         context_parts = []
 

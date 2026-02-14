@@ -396,8 +396,17 @@ def main():
         data = json.loads(input_data)
 
         # Get user's prompt
-        prompt = data.get("prompt", "")
+        prompt = data.get("prompt", "").strip()
         if not prompt:
+            print(json.dumps({}))
+            return
+
+        # Skip trivial/affirmative prompts — no useful context to inject
+        if len(prompt) < 20 and prompt.lower().rstrip("!. ") in {
+            "yes", "no", "ok", "okay", "do it", "go ahead", "sure",
+            "looks good", "lgtm", "thanks", "continue", "proceed",
+            "commit this", "push it", "yep", "nope", "correct",
+        }:
             print(json.dumps({}))
             return
 
