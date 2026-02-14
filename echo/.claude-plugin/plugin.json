@@ -1,6 +1,6 @@
 {
   "name": "echo",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Fully autonomous context system - captures code structures, search patterns, and activity; auto-injects relevant knowledge on every prompt",
   "author": {"name": "okkazoo"},
   "keywords": ["memory", "knowledge", "structure", "context", "navigation", "autonomous"],

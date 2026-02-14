@@ -65,10 +65,10 @@ def consolidate_structures(entries: List[Dict]) -> Dict[str, List[Dict]]:
     by_file: Dict[str, Dict[str, Dict]] = defaultdict(dict)
 
     for entry in entries:
-        file_path = entry.get("file", "")
-        name = entry.get("name", "")
-        struct_type = entry.get("type", "")
-        task_hint = entry.get("task_hint", "")
+        file_path = entry.get("f", entry.get("file", ""))
+        name = entry.get("n", entry.get("name", ""))
+        struct_type = entry.get("t", entry.get("type", ""))
+        task_hint = entry.get("h", entry.get("task_hint", ""))
 
         if file_path and name:
             # Keep the most recent task_hint if one exists
@@ -252,13 +252,7 @@ def save_verified_structures(worklog_dir: Path, structures: Dict[str, List[Dict]
     with open(temp_file, "w", encoding="utf-8") as f:
         for file_path, structs in structures.items():
             for s in structs:
-                entry = {
-                    "file": file_path,
-                    "name": s["name"],
-                    "type": s["type"],
-                    "task_hint": s.get("task_hint", ""),
-                    "verified": True,
-                }
+                entry = {"f": file_path, "n": s["name"], "t": s["type"], "h": s.get("task_hint", "")}
                 f.write(json.dumps(entry) + "\n")
 
     # Replace old file

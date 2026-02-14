@@ -97,12 +97,10 @@ def load_recent_structures(worklog_dir: Path) -> List[Dict]:
                 if line:
                     try:
                         entry = json.loads(line)
-                        ts = entry.get("ts", "")
-                        if ts.startswith(today):
-                            key = (entry.get("file", ""), entry.get("name", ""))
-                            if key not in seen:
-                                seen.add(key)
-                                structures.append(entry)
+                        key = (entry.get("f", entry.get("file", "")), entry.get("n", entry.get("name", "")))
+                        if key not in seen:
+                            seen.add(key)
+                            structures.append(entry)
                     except json.JSONDecodeError:
                         continue
     except Exception:

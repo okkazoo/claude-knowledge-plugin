@@ -250,12 +250,15 @@ def main():
         except ValueError:
             pass
 
-        # Log each structure with task correlation (deduplicated)
+        # Log structures with task correlation (deduplicated, hint-updated)
         worklog_dir = get_worklog_dir()
         structures_file = worklog_dir / "structures.jsonl"
 
-        # Load existing (file, name) pairs to avoid duplicates
-        existing_keys = set()
+        task_hint = get_task_keywords()
+
+        # Load existing entries
+        existing = []
+        existing_keys = {}  # (file, name) -> index
         if structures_file.exists():
             try:
                 with open(structures_file, "r", encoding="utf-8") as f:
@@ -264,43 +267,49 @@ def main():
                         if line:
                             try:
                                 e = json.loads(line)
-                                existing_keys.add((e.get("file", ""), e.get("name", "")))
+                                key = (e.get("f", ""), e.get("n", ""))
+                                existing_keys[key] = len(existing)
+                                existing.append(e)
                             except json.JSONDecodeError:
                                 continue
             except Exception:
                 pass
 
-        # Filter to only new structures
-        new_structures = [s for s in structures if (file_path, s["name"]) not in existing_keys]
-        if not new_structures:
-            return
+        new_structures = []
+        hints_updated = False
 
-        task_hint = get_task_keywords()
+        for struct in structures:
+            key = (file_path, struct["name"])
+            idx = existing_keys.get(key)
+            if idx is not None:
+                # Update task_hint if we have a meaningful new one
+                if task_hint and task_hint != existing[idx].get("h", ""):
+                    existing[idx]["h"] = task_hint
+                    hints_updated = True
+            else:
+                new_structures.append(struct)
 
-        # Build path keywords from directory segments
-        path_keywords = []
-        for part in Path(file_path).parts:
-            stem = Path(part).stem.lower()
-            if stem and len(stem) >= 2:
-                path_keywords.append(stem)
+        # Rewrite file if hints were updated
+        if hints_updated:
+            with open(structures_file, "w", encoding="utf-8") as f:
+                for e in existing:
+                    f.write(json.dumps(e) + "\n")
 
-        with open(structures_file, "a", encoding="utf-8") as f:
-            for struct in new_structures:
-                entry = {
-                    "file": file_path,
-                    "name": struct["name"],
-                    "type": struct["type"],
-                    "task_hint": task_hint,
-                    "path_keywords": path_keywords,
-                    "operation": "created" if tool_name == "Write" else "modified",
-                }
-                f.write(json.dumps(entry) + "\n")
+        # Append new structures
+        if new_structures:
+            with open(structures_file, "a", encoding="utf-8") as f:
+                for struct in new_structures:
+                    entry = {"f": file_path, "n": struct["name"], "t": struct["type"], "h": task_hint}
+                    f.write(json.dumps(entry) + "\n")
 
         # Verbose output
-        names = ", ".join(s["name"] for s in new_structures[:3])
-        if len(new_structures) > 3:
-            names += f" +{len(new_structures) - 3} more"
-        log_verbose(f"✓ Learned: {names} in {Path(file_path).name}")
+        if new_structures:
+            names = ", ".join(s["name"] for s in new_structures[:3])
+            if len(new_structures) > 3:
+                names += f" +{len(new_structures) - 3} more"
+            log_verbose(f"✓ Learned: {names} in {Path(file_path).name}")
+        elif hints_updated:
+            log_verbose(f"✓ Updated hints in {Path(file_path).name}")
 
     except Exception:
         # Fail silently

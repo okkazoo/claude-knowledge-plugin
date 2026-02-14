@@ -79,9 +79,9 @@ def search_structures(worklog_dir: Path, keywords: Set[str]) -> List[Tuple[int, 
     seen = set()  # deduplicate by (file, name)
 
     for entry in entries:
-        name = entry.get("name", "")
-        file_path = entry.get("file", "")
-        task_hint = entry.get("task_hint", "")
+        name = entry.get("n", entry.get("name", ""))
+        file_path = entry.get("f", entry.get("file", ""))
+        task_hint = entry.get("h", entry.get("task_hint", ""))
         path_keywords = entry.get("path_keywords", [])
 
         key = (file_path, name)
@@ -341,10 +341,10 @@ def format_output(
     if structure_matches:
         lines = ["**Relevant code structures:**"]
         for _, struct in structure_matches:
-            name = struct.get("name", "")
-            stype = struct.get("type", "")
-            fpath = struct.get("file", "")
-            hint = struct.get("task_hint", "")
+            name = struct.get("n", struct.get("name", ""))
+            stype = struct.get("t", struct.get("type", ""))
+            fpath = struct.get("f", struct.get("file", ""))
+            hint = struct.get("h", struct.get("task_hint", ""))
             line = f"- `{name}` ({stype}) in `{fpath}`"
             if hint:
                 line += f" — context: {hint}"

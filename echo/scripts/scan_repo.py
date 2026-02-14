@@ -312,7 +312,7 @@ def main():
                             continue
 
         # Build set of existing (file, name) pairs to avoid duplicates
-        existing_keys = {(e.get("file", ""), e.get("name", "")) for e in existing_entries}
+        existing_keys = {(e.get("f", e.get("file", "")), e.get("n", e.get("name", ""))) for e in existing_entries}
 
         with open(structures_file, "a", encoding="utf-8") as f:
             for directory, structs in sorted(selected.items()):
@@ -321,21 +321,7 @@ def main():
                     if key in existing_keys:
                         continue
 
-                    # Build path keywords
-                    path_keywords = []
-                    for part in Path(s["file"]).parts:
-                        stem = Path(part).stem.lower()
-                        if stem and len(stem) >= 2:
-                            path_keywords.append(stem)
-
-                    entry = {
-                        "file": s["file"],
-                        "name": s["name"],
-                        "type": s["type"],
-                        "task_hint": "repo scan",
-                        "path_keywords": path_keywords,
-                        "operation": "scanned",
-                    }
+                    entry = {"f": s["file"], "n": s["name"], "t": s["type"], "h": "repo scan"}
                     f.write(json.dumps(entry) + "\n")
                     written += 1
 

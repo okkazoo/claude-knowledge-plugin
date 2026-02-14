@@ -231,7 +231,7 @@ def load_existing_structure_names(worklog_dir: Path) -> Set[str]:
                     if line:
                         try:
                             entry = json.loads(line)
-                            names.add(entry.get("name", ""))
+                            names.add(entry.get("n", entry.get("name", "")))
                         except json.JSONDecodeError:
                             continue
         except Exception:
@@ -294,12 +294,10 @@ def write_auto_memory(worklog_dir: Path, edits: List[Dict], newly_processed: set
                         if line:
                             try:
                                 entry = json.loads(line)
-                                ts = entry.get("ts", "")
-                                if ts.startswith(today) and ts in newly_processed or \
-                                   entry.get("operation") == "created":
-                                    name = entry.get("name", "")
-                                    fpath = entry.get("file", "")
-                                    stype = entry.get("type", "")
+                                name = entry.get("n", entry.get("name", ""))
+                                fpath = entry.get("f", entry.get("file", ""))
+                                stype = entry.get("t", entry.get("type", ""))
+                                if name and fpath:
                                     new_structs.append(f"`{name}` ({stype}) in `{fpath}`")
                             except json.JSONDecodeError:
                                 continue
