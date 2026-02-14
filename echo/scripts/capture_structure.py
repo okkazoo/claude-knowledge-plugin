@@ -10,7 +10,6 @@ import json
 import os
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -251,11 +250,31 @@ def main():
         except ValueError:
             pass
 
-        # Log each structure with task correlation
+        # Log each structure with task correlation (deduplicated)
         worklog_dir = get_worklog_dir()
         structures_file = worklog_dir / "structures.jsonl"
 
-        timestamp = datetime.now().isoformat()
+        # Load existing (file, name) pairs to avoid duplicates
+        existing_keys = set()
+        if structures_file.exists():
+            try:
+                with open(structures_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            try:
+                                e = json.loads(line)
+                                existing_keys.add((e.get("file", ""), e.get("name", "")))
+                            except json.JSONDecodeError:
+                                continue
+            except Exception:
+                pass
+
+        # Filter to only new structures
+        new_structures = [s for s in structures if (file_path, s["name"]) not in existing_keys]
+        if not new_structures:
+            return
+
         task_hint = get_task_keywords()
 
         # Build path keywords from directory segments
@@ -266,9 +285,8 @@ def main():
                 path_keywords.append(stem)
 
         with open(structures_file, "a", encoding="utf-8") as f:
-            for struct in structures:
+            for struct in new_structures:
                 entry = {
-                    "ts": timestamp,
                     "file": file_path,
                     "name": struct["name"],
                     "type": struct["type"],
@@ -279,9 +297,9 @@ def main():
                 f.write(json.dumps(entry) + "\n")
 
         # Verbose output
-        names = ", ".join(s["name"] for s in structures[:3])
-        if len(structures) > 3:
-            names += f" +{len(structures) - 3} more"
+        names = ", ".join(s["name"] for s in new_structures[:3])
+        if len(new_structures) > 3:
+            names += f" +{len(new_structures) - 3} more"
         log_verbose(f"✓ Learned: {names} in {Path(file_path).name}")
 
     except Exception:

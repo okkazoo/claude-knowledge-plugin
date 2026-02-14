@@ -296,7 +296,7 @@ def main():
         worklog_dir = get_worklog_dir()
         structures_file = worklog_dir / "structures.jsonl"
 
-        timestamp = datetime.now().isoformat()
+
         written = 0
 
         # Preserve existing entries (from manual work)
@@ -329,7 +329,6 @@ def main():
                             path_keywords.append(stem)
 
                     entry = {
-                        "ts": timestamp,
                         "file": s["file"],
                         "name": s["name"],
                         "type": s["type"],

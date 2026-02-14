@@ -249,13 +249,10 @@ def save_verified_structures(worklog_dir: Path, structures: Dict[str, List[Dict]
     structures_file = worklog_dir / "structures.jsonl"
     temp_file = worklog_dir / "structures.jsonl.new"
 
-    timestamp = datetime.now().isoformat()
-
     with open(temp_file, "w", encoding="utf-8") as f:
         for file_path, structs in structures.items():
             for s in structs:
                 entry = {
-                    "ts": timestamp,
                     "file": file_path,
                     "name": s["name"],
                     "type": s["type"],
